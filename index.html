@@ -163,7 +163,6 @@
             margin-bottom: 30px;
         }
         
-
         .stat-card {
             background: linear-gradient(135deg, #FEFFAF, #F5F59F);
             color: #78A2D2; /* Vista Blue for text inside cards */
@@ -184,6 +183,23 @@
             opacity: 0.9;
         }
 
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 18px;
+            color: #78A2D2;
+        }
+
+        .error {
+            background-color: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
             .sidebar {
@@ -192,6 +208,10 @@
             
             .main-content {
                 padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
@@ -204,8 +224,8 @@
                 <div class="logo-container">
                     <svg class="car-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="40px" height="40px">
                         <path d="M5 11h14l-1.5-4.5c-.2-.6-.8-1-1.4-1H7.9c-.7 0-1.2.4-1.4 1L5 11zm14 2H5c-.6 0-1 .4-1 1v6h2v-2h12v2h2v-6c0-.6-.4-1-1-1zm-9.5 5c-.8 0-1.5-.7-1.5-1.5S8.7 15 9.5 15s1.5.7 1.5 1.5S10.3 18 9.5 18zm5 0c-.8 0-1.5-.7-1.5-1.5S13.7 15 14.5 15s1.5.7 1.5 1.5S15.3 18 14.5 18z"/>
-                      </svg>
-                      <span class="uber-text">UBER </span>                      
+                    </svg>
+                    <span class="uber-text">UBER </span>                      
                 </div>
                 <small style="font-size: 14px; font-weight: normal;">ANALYTICS DASHBOARD</small>
             </h1>
@@ -236,23 +256,23 @@
                 
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-value">28,476</div>
+                        <div class="stat-value" id="total-bookings">-</div>
                         <div class="stat-label">Total Bookings</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value">24,589</div>
+                        <div class="stat-value" id="completed-rides">-</div>
                         <div class="stat-label">Completed Rides</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value">8.4 km</div>
-                        <div class="stat-label">Avg Distance</div>
+                        <div class="stat-value" id="avg-distance">-</div>
+                        <div class="stat-label">Avg Distance (km)</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value">4.7</div>
+                        <div class="stat-value" id="avg-rating">-</div>
                         <div class="stat-label">Average Rating</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value">$487,231</div>
+                        <div class="stat-value" id="total-revenue">-</div>
                         <div class="stat-label">Total Revenue</div>
                     </div>
                 </div>
@@ -264,6 +284,10 @@
                     <h2 class="content-title">Vehicle Type Analysis</h2>
                     <p class="content-subtitle">Breakdown by vehicle categories</p>
                 </div>
+                
+                <div class="dashboard-grid">
+                    <!-- Charts will be added later -->
+                </div>
             </section>
 
             <!-- Revenue Section -->
@@ -271,6 +295,10 @@
                 <div class="content-header">
                     <h2 class="content-title">Revenue Analytics</h2>
                     <p class="content-subtitle">Financial performance metrics</p>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <!-- Charts will be added later -->
                 </div>
             </section>
 
@@ -280,11 +308,17 @@
                     <h2 class="content-title">Booking Status Overview</h2>
                     <p class="content-subtitle">Real-time booking performance</p>
                 </div>
+                
+                <div class="dashboard-grid">
+                    <!-- Charts will be added later -->
+                </div>
             </section>
         </main>
     </div>
 
     <script>
+        let dashboardData = [];
+
         // Navigation functionality
         document.addEventListener('DOMContentLoaded', function() {
             const navLinks = document.querySelectorAll('.nav-link');
@@ -307,112 +341,89 @@
                 });
             });
 
-            // Initialize charts
-            createSampleCharts();
+            // Load CSV data
+            loadCSVData();
         });
 
-        function createSampleCharts() {
-            // Sample data for demonstration
-            const sampleData = [
-                {date: '2024-01', rides: 15000},
-                {date: '2024-02', rides: 18000},
-                {date: '2024-03', rides: 22000},
-                {date: '2024-04', rides: 19000},
-                {date: '2024-05', rides: 25000},
-                {date: '2024-06', rides: 24000}
-            ];
-
-            // Create a simple bar chart for overall section
-            createBarChart('#overall-chart-1', sampleData, 'date', 'rides');
+        function loadCSVData() {
+            // Show loading state
+            showLoading();
             
-            // Create a pie chart for vehicle types
-            const vehicleData = [
-                {type: 'UberX', count: 45},
-                {type: 'UberXL', count: 25},
-                {type: 'UberPool', count: 20},
-                {type: 'UberBlack', count: 10}
-            ];
-            createPieChart('#vehicle-chart-1', vehicleData);
+            d3.csv('ncr_ride_bookings.csv').then(function(data) {
+                console.log('Raw CSV data loaded:', data.length, 'records');
+                console.log('First record:', data[0]);
+                
+                // Clean and process the data
+                dashboardData = data.map(d => ({
+                    date: d.Date,
+                    time: d.Time,
+                    bookingId: d['Booking ID'].replace(/"/g, ''),
+                    bookingStatus: d['Booking Status'],
+                    customerId: d['Customer ID'].replace(/"/g, ''),
+                    vehicleType: d['Vehicle Type'],
+                    pickupLocation: d['Pickup Location'],
+                    dropLocation: d['Drop Location'],
+                    avgVTAT: d['Avg VTAT'] === 'null' ? null : parseFloat(d['Avg VTAT']),
+                    avgCTAT: d['Avg CTAT'] === 'null' ? null : parseFloat(d['Avg CTAT']),
+                    cancelledByCustomer: d['Cancelled Rides by Customer'] === 'null' ? null : parseInt(d['Cancelled Rides by Customer']),
+                    customerCancelReason: d['Reason for cancelling by Customer'],
+                    cancelledByDriver: d['Cancelled Rides by Driver'] === 'null' ? null : parseInt(d['Cancelled Rides by Driver']),
+                    driverCancelReason: d['Driver Cancellation Reason'],
+                    incompleteRides: d['Incomplete Rides'] === 'null' ? null : parseInt(d['Incomplete Rides']),
+                    incompleteReason: d['Incomplete Rides Reason'],
+                    bookingValue: d['Booking Value'] === 'null' ? null : parseFloat(d['Booking Value']),
+                    rideDistance: d['Ride Distance'] === 'null' ? null : parseFloat(d['Ride Distance']),
+                    driverRating: d['Driver Ratings'] === 'null' ? null : parseFloat(d['Driver Ratings']),
+                    customerRating: d['Customer Rating'] === 'null' ? null : parseFloat(d['Customer Rating']),
+                    paymentMethod: d['Payment Method']
+                }));
+
+                console.log('Processed data:', dashboardData.length, 'records');
+                console.log('First processed record:', dashboardData[0]);
+
+                // Update dashboard
+                updateDashboard();
+                
+            }).catch(function(error) {
+                console.error('Error loading CSV:', error);
+                showError('Failed to load CSV data. Please ensure ncr_bookings.csv is in the same directory as this HTML file.');
+            });
         }
 
-        function createBarChart(selector, data, xKey, yKey) {
-            const margin = {top: 20, right: 30, bottom: 40, left: 50};
-            const width = 400 - margin.left - margin.right;
-            const height = 250 - margin.bottom - margin.top;
-
-            const svg = d3.select(selector)
-                .append('svg')
-                .attr('width', width + margin.left + margin.right)
-                .attr('height', height + margin.top + margin.bottom);
-
-            const g = svg.append('g')
-                .attr('transform', `translate(${margin.left},${margin.top})`);
-
-            const x = d3.scaleBand()
-                .rangeRound([0, width])
-                .padding(0.1)
-                .domain(data.map(d => d[xKey]));
-
-            const y = d3.scaleLinear()
-                .rangeRound([height, 0])
-                .domain([0, d3.max(data, d => d[yKey])]);
-
-            g.append('g')
-                .attr('transform', `translate(0,${height})`)
-                .call(d3.axisBottom(x));
-
-            g.append('g')
-                .call(d3.axisLeft(y));
-
-            g.selectAll('.bar')
-                .data(data)
-                .enter().append('rect')
-                .attr('class', 'bar')
-                .attr('x', d => x(d[xKey]))
-                .attr('y', d => y(d[yKey]))
-                .attr('width', x.bandwidth())
-                .attr('height', d => height - y(d[yKey]))
-                .attr('fill', '#3498db');
+        function showLoading() {
+            document.getElementById('total-bookings').innerHTML = '<div style="font-size: 18px;">Loading...</div>';
         }
 
-        function createPieChart(selector, data) {
-            const width = 300;
-            const height = 250;
-            const radius = Math.min(width, height) / 2;
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = message;
+            document.querySelector('.main-content').insertBefore(errorDiv, document.querySelector('.dashboard-section'));
+        }
 
-            const svg = d3.select(selector)
-                .append('svg')
-                .attr('width', width)
-                .attr('height', height)
-                .append('g')
-                .attr('transform', `translate(${width/2},${height/2})`);
+        function updateDashboard() {
+            updateKPIs();
+        }
 
-            const color = d3.scaleOrdinal()
-                .domain(data.map(d => d.type))
-                .range(['#3498db', '#e74c3c', '#27ae60', '#f39c12']);
+        function updateKPIs() {
+            const totalBookings = dashboardData.length;
+            const completedRides = dashboardData.filter(d => d.bookingStatus === 'Completed').length;
+            const avgDistance = d3.mean(dashboardData.filter(d => d.rideDistance), d => d.rideDistance) || 0;
+            const avgRating = d3.mean(dashboardData.filter(d => d.driverRating), d => d.driverRating) || 0;
+            
+            // Debug revenue calculation
+            const validRevenueData = dashboardData.filter(d => d.bookingValue !== null && !isNaN(d.bookingValue));
+            console.log('Valid revenue records:', validRevenueData.length);
+            console.log('Sample revenue values:', validRevenueData.slice(0, 5).map(d => d.bookingValue));
+            
+            const totalRevenue = d3.sum(validRevenueData, d => d.bookingValue) || 0;
+            console.log('Total revenue calculated:', totalRevenue);
 
-            const pie = d3.pie()
-                .value(d => d.count);
-
-            const arc = d3.arc()
-                .innerRadius(0)
-                .outerRadius(radius);
-
-            const arcs = svg.selectAll('.arc')
-                .data(pie(data))
-                .enter().append('g')
-                .attr('class', 'arc');
-
-            arcs.append('path')
-                .attr('d', arc)
-                .attr('fill', d => color(d.data.type));
-
-            arcs.append('text')
-                .attr('transform', d => `translate(${arc.centroid(d)})`)
-                .attr('dy', '0.35em')
-                .style('text-anchor', 'middle')
-                .style('font-size', '12px')
-                .text(d => d.data.type);
+            document.getElementById('total-bookings').textContent = totalBookings.toLocaleString();
+            document.getElementById('completed-rides').textContent = completedRides.toLocaleString();
+            document.getElementById('avg-distance').textContent = avgDistance.toFixed(1) + ' km';
+            document.getElementById('avg-rating').textContent = avgRating.toFixed(1);
+            document.getElementById('total-revenue').textContent = '$' + totalRevenue.toLocaleString();
         }
     </script>
 </body>
