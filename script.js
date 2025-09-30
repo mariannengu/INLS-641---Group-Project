@@ -97,11 +97,12 @@ function updateBookingStatusPieChart() {
     const statusCounts = d3.rollup(filteredData, v => v.length, d => d.bookingStatus);
     const total = filteredData.length;
     
+    // Filter out statuses with 0 count
     const chartData = Array.from(statusCounts, ([status, count]) => ({
         status,
         count,
         percentage: (count / total * 100).toFixed(1)
-    })).sort((a, b) => b.count - a.count);
+    })).filter(d => d.count > 0).sort((a, b) => b.count - a.count);
 
     d3.select('#booking-status-pie-chart').selectAll('*').remove();
 
@@ -124,16 +125,18 @@ function updateBookingStatusPieChart() {
     }
 
     const containerWidth = document.getElementById('booking-status-pie-chart').clientWidth;
-    const width = Math.min(containerWidth, 400);
-    const height = 400;
-    const radius = Math.min(width, height) / 2 - 80;
+    const width = 240;
+    const height = 240;
+    const radius = Math.min(width, height) / 2 - 35;
 
     const container = d3.select('#booking-status-pie-chart')
         .append('div')
         .style('display', 'flex')
-        .style('flex-direction', 'column')
+        .style('flex-direction', 'row')
         .style('align-items', 'center')
-        .style('gap', '20px');
+        .style('justify-content', 'center')
+        .style('gap', '30px')
+        .style('height', '100%');
 
     const svg = container
         .append('svg')
@@ -144,7 +147,7 @@ function updateBookingStatusPieChart() {
 
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.status))
-        .range(['#4CAF50', '#FF5252', '#FF9800', '#9E9E9E', '#2196F3', '#E91E63']);
+        .range(['#A8E6CF', '#FFB3BA', '#FFDFBA', '#E0E0E0', '#BAE1FF', '#FFB3E6']);
 
     const pie = d3.pie()
         .value(d => d.count)
@@ -155,8 +158,8 @@ function updateBookingStatusPieChart() {
         .outerRadius(radius);
 
     const outerArc = d3.arc()
-        .innerRadius(radius * 1.1)
-        .outerRadius(radius * 1.1);
+        .innerRadius(radius * 1.05)
+        .outerRadius(radius * 1.05);
 
     // Draw pie slices
     const slices = svg.selectAll('path')
@@ -221,7 +224,7 @@ function updateBookingStatusPieChart() {
         .append('polyline')
         .attr('points', function(d) {
             const pos = outerArc.centroid(d);
-            pos[0] = radius * 1.15 * (midAngle(d) < Math.PI ? 1 : -1);
+            pos[0] = radius * 1.08 * (midAngle(d) < Math.PI ? 1 : -1);
             return [arc.centroid(d), outerArc.centroid(d), pos];
         })
         .style('fill', 'none')
@@ -235,36 +238,24 @@ function updateBookingStatusPieChart() {
         .delay((d, i) => i * 100 + 800)
         .style('opacity', 0.7);
 
-    // Add percentage labels
+    // Add percentage labels (only percentage, no status)
     const labels = svg.selectAll('text')
         .data(pie(chartData))
         .enter()
         .append('text')
         .attr('transform', function(d) {
             const pos = outerArc.centroid(d);
-            pos[0] = radius * 1.2 * (midAngle(d) < Math.PI ? 1 : -1);
+            pos[0] = radius * 1.08 * (midAngle(d) < Math.PI ? 1 : -1);
             return `translate(${pos})`;
         })
         .style('text-anchor', function(d) {
             return midAngle(d) < Math.PI ? 'start' : 'end';
         })
-        .style('font-size', '13px')
+        .style('font-size', '10px')
         .style('font-weight', 'bold')
         .style('fill', '#333')
         .style('opacity', 0)
-        .each(function(d) {
-            const el = d3.select(this);
-            el.append('tspan')
-                .attr('x', 0)
-                .attr('dy', '0em')
-                .text(d.data.status);
-            el.append('tspan')
-                .attr('x', 0)
-                .attr('dy', '1.2em')
-                .style('font-size', '12px')
-                .style('fill', '#666')
-                .text(`${d.data.percentage}%`);
-        });
+        .text(d => `${d.data.percentage}%`);
 
     // Animate labels
     labels.transition()
@@ -272,14 +263,12 @@ function updateBookingStatusPieChart() {
         .delay((d, i) => i * 100 + 800)
         .style('opacity', 1);
 
-    // Create legend
+    // Create legend on the right
     const legend = container
         .append('div')
         .style('display', 'flex')
-        .style('flex-wrap', 'wrap')
-        .style('justify-content', 'center')
-        .style('gap', '15px')
-        .style('max-width', '100%')
+        .style('flex-direction', 'column')
+        .style('gap', '8px')
         .style('padding', '10px');
 
     chartData.forEach(d => {
@@ -310,14 +299,16 @@ function updateBookingStatusPieChart() {
             });
 
         legendItem.append('div')
-            .style('width', '16px')
-            .style('height', '16px')
+            .style('width', '14px')
+            .style('height', '14px')
             .style('background-color', color(d.status))
-            .style('border-radius', '3px');
+            .style('border-radius', '2px')
+            .style('flex-shrink', '0');
 
         legendItem.append('span')
-            .style('font-size', '13px')
+            .style('font-size', '8px')
             .style('color', '#333')
+            .style('white-space', 'nowrap')
             .text(`${d.status} (${d.percentage}%)`);
     });
 
@@ -351,14 +342,15 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
-    const margin = { top: 20, right: 30, bottom: 80, left: 70 };
-    const width = document.getElementById(containerId).clientWidth - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+    const container = document.getElementById(containerId);
+    const margin = { top: 20, right: 30, bottom: 100, left: 90 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 300 - margin.top - margin.bottom;
 
     const svg = d3.select(`#${containerId}`)
         .append('svg')
-        .attr('width', width + margin.left + margin.right)
-        .attr('height', height + margin.top + margin.bottom)
+        .attr('width', container.clientWidth)
+        .attr('height', 300)
         .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
