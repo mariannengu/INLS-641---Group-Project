@@ -147,7 +147,7 @@ function updateBookingStatusPieChart() {
 
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.status))
-        .range(['#A8E6CF', '#FFB3BA', '#FFDFBA', '#E0E0E0', '#BAE1FF', '#FFB3E6']);
+        .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
 
     const pie = d3.pie()
         .value(d => d.count)
@@ -366,7 +366,7 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
 
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.vehicleType))
-        .range(['#78A2D2', '#6B94C5', '#5A83B4', '#FEFFAF', '#F5F59F', '#EBEB8F']);
+        .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
 
     // Bars with animation and hover interactions
     const bars = svg.selectAll('.bar')
