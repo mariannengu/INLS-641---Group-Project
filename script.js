@@ -73,9 +73,8 @@ function showError(message) {
 
 function updateDashboard() {
     updateKPIs();
-    updateVehicleTypeChart('vehicle-type-chart');          // Vehicle Type section
-    updateVehicleTypeChart('vehicle-type-chart-overall');  // Overall section
-    updateBookingStatusPieChart();  // Add pie chart update
+    updateVehicleTypeChart('vehicle-type-chart-overall');
+    updateBookingStatusPieChart();
 }
 
 function updateKPIs() {
@@ -97,7 +96,6 @@ function updateBookingStatusPieChart() {
     const statusCounts = d3.rollup(filteredData, v => v.length, d => d.bookingStatus);
     const total = filteredData.length;
     
-    // Filter out statuses with 0 count
     const chartData = Array.from(statusCounts, ([status, count]) => ({
         status,
         count,
@@ -106,7 +104,6 @@ function updateBookingStatusPieChart() {
 
     d3.select('#booking-status-pie-chart').selectAll('*').remove();
 
-    // Create tooltip
     let tooltip = d3.select('body').select('.pie-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -124,7 +121,6 @@ function updateBookingStatusPieChart() {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
-    const containerWidth = document.getElementById('booking-status-pie-chart').clientWidth;
     const width = 240;
     const height = 240;
     const radius = Math.min(width, height) / 2 - 35;
@@ -161,7 +157,6 @@ function updateBookingStatusPieChart() {
         .innerRadius(radius * 1.05)
         .outerRadius(radius * 1.05);
 
-    // Draw pie slices
     const slices = svg.selectAll('path')
         .data(pie(chartData))
         .enter()
@@ -205,7 +200,6 @@ function updateBookingStatusPieChart() {
             tooltip.style('opacity', 0);
         });
 
-    // Animate slices
     slices.transition()
         .duration(800)
         .delay((d, i) => i * 100)
@@ -217,7 +211,6 @@ function updateBookingStatusPieChart() {
             };
         });
 
-    // Add polylines (leader lines)
     const polylines = svg.selectAll('polyline')
         .data(pie(chartData))
         .enter()
@@ -232,13 +225,11 @@ function updateBookingStatusPieChart() {
         .style('stroke-width', '1.5px')
         .style('opacity', 0);
 
-    // Animate polylines
     polylines.transition()
         .duration(800)
         .delay((d, i) => i * 100 + 800)
         .style('opacity', 0.7);
 
-    // Add percentage labels (only percentage, no status)
     const labels = svg.selectAll('text')
         .data(pie(chartData))
         .enter()
@@ -257,13 +248,11 @@ function updateBookingStatusPieChart() {
         .style('opacity', 0)
         .text(d => `${d.data.percentage}%`);
 
-    // Animate labels
     labels.transition()
         .duration(800)
         .delay((d, i) => i * 100 + 800)
         .style('opacity', 1);
 
-    // Create legend on the right
     const legend = container
         .append('div')
         .style('display', 'flex')
@@ -278,7 +267,6 @@ function updateBookingStatusPieChart() {
             .style('gap', '8px')
             .style('cursor', 'pointer')
             .on('mouseover', function() {
-                // Highlight corresponding slice
                 svg.selectAll('path')
                     .filter(slice => slice.data.status === d.status)
                     .transition()
@@ -324,7 +312,6 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
 
     d3.select(`#${containerId}`).selectAll('*').remove();
 
-    // Create tooltip if it doesn't exist
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -368,7 +355,6 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
         .domain(chartData.map(d => d.vehicleType))
         .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
 
-    // Bars with animation and hover interactions
     const bars = svg.selectAll('.bar')
         .data(chartData)
         .enter()
@@ -405,8 +391,9 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
                 .attr('opacity', 0.8);
             
             tooltip.style('opacity', 0);
-        })
-        .transition()
+        });
+
+    bars.transition()
         .duration(800)
         .delay((d, i) => i * 100)
         .ease(d3.easeCubicOut)
@@ -414,7 +401,6 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
         .attr('height', d => height - y(d.count))
         .attr('opacity', 0.8);
 
-    // X axis
     svg.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(d3.axisBottom(x))
@@ -424,14 +410,12 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
         .style('font-size', '12px')
         .style('fill', '#333');
 
-    // Y axis
     svg.append('g')
         .call(d3.axisLeft(y))
         .selectAll('text')
         .style('font-size', '12px')
         .style('fill', '#333');
 
-    // X axis label
     svg.append('text')
         .attr('x', width / 2)
         .attr('y', height + margin.bottom - 10)
@@ -441,7 +425,6 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
         .style('fill', '#333')
         .text('Vehicle Type');
 
-    // Y axis label
     svg.append('text')
         .attr('transform', 'rotate(-90)')
         .attr('x', -height / 2)
@@ -451,77 +434,31 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
         .style('font-weight', 'bold')
         .style('fill', '#333')
         .text('Number of Bookings');
-
-    // Add value labels on top of bars
-    const labels = svg.selectAll('.label')
-        .data(chartData)
-        .enter()
-        .append('text')
-        .attr('class', 'label')
-        .attr('x', d => x(d.vehicleType) + x.bandwidth() / 2)
-        .attr('y', d => y(d.count) - 5)
-        .attr('text-anchor', 'middle')
-        .style('font-size', '12px')
-        .style('font-weight', 'bold')
-        .style('fill', '#333')
-        .style('opacity', 0)
-        .style('pointer-events', 'none')
-        .text(d => d.count.toLocaleString());
-
-    // Add click interaction to bars
-    svg.selectAll('.bar')
-        .on('click', function(event, d) {
-            const clickedBar = d3.select(this);
-            const isActive = clickedBar.classed('active');
-            
-            svg.selectAll('.bar').classed('active', false).attr('opacity', 0.8);
-            svg.selectAll('.label').transition().duration(200).style('opacity', 0);
-            
-            if (!isActive) {
-                clickedBar.classed('active', true).attr('opacity', 1);
-                
-                svg.selectAll('.label')
-                    .filter(label => label.vehicleType === d.vehicleType)
-                    .transition()
-                    .duration(300)
-                    .style('opacity', 1);
-            }
-        })
-        .on('mouseenter', function() {
-            const bar = d3.select(this);
-            if (!bar.classed('active')) {
-                bar.transition().duration(200).attr('opacity', 1);
-            }
-        })
-        .on('mouseleave', function() {
-            const bar = d3.select(this);
-            if (!bar.classed('active')) {
-                bar.transition().duration(200).attr('opacity', 0.8);
-            }
-        });
 }
 
 function populateDateDropdowns() {
-    const sections = ['overall', 'vehicle-type', 'revenue', 'booking-status'];
+    const sections = ['overall', 'vehicle-type-page', 'revenue', 'booking-status'];
     
     sections.forEach(section => {
         const startSelect = document.getElementById(`start-date-${section}`);
         const endSelect = document.getElementById(`end-date-${section}`);
         
-        startSelect.innerHTML = '<option value="">All Dates</option>';
-        endSelect.innerHTML = '<option value="">All Dates</option>';
-        
-        allDates.forEach(date => {
-            const option1 = document.createElement('option');
-            option1.value = date;
-            option1.textContent = date;
-            startSelect.appendChild(option1);
+        if (startSelect && endSelect) {
+            startSelect.innerHTML = '<option value="">All Dates</option>';
+            endSelect.innerHTML = '<option value="">All Dates</option>';
             
-            const option2 = document.createElement('option');
-            option2.value = date;
-            option2.textContent = date;
-            endSelect.appendChild(option2);
-        });
+            allDates.forEach(date => {
+                const option1 = document.createElement('option');
+                option1.value = date;
+                option1.textContent = date;
+                startSelect.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = date;
+                option2.textContent = date;
+                endSelect.appendChild(option2);
+            });
+        }
     });
 }
 
@@ -540,23 +477,34 @@ function applyDateFilter(section) {
     }
     
     const filterInfo = document.getElementById(`filter-info-${section}`);
-    if (!startDate && !endDate) {
-        filterInfo.textContent = 'Showing all data';
-    } else if (startDate && endDate) {
-        filterInfo.textContent = `Filtered: ${startDate} to ${endDate} (${filteredData.length} records)`;
-    } else if (startDate) {
-        filterInfo.textContent = `Filtered: From ${startDate} (${filteredData.length} records)`;
-    } else {
-        filterInfo.textContent = `Filtered: Until ${endDate} (${filteredData.length} records)`;
+    if (filterInfo) {
+        if (!startDate && !endDate) {
+            filterInfo.textContent = 'Showing all data';
+        } else if (startDate && endDate) {
+            filterInfo.textContent = `Filtered: ${startDate} to ${endDate} (${filteredData.length} records)`;
+        } else if (startDate) {
+            filterInfo.textContent = `Filtered: From ${startDate} (${filteredData.length} records)`;
+        } else {
+            filterInfo.textContent = `Filtered: Until ${endDate} (${filteredData.length} records)`;
+        }
     }
     
     updateDashboard();
 }
 
 function resetDateFilter(section) {
-    document.getElementById(`start-date-${section}`).value = '';
-    document.getElementById(`end-date-${section}`).value = '';
+    const startSelect = document.getElementById(`start-date-${section}`);
+    const endSelect = document.getElementById(`end-date-${section}`);
+    const filterInfo = document.getElementById(`filter-info-${section}`);
+    
+    if (startSelect) startSelect.value = '';
+    if (endSelect) endSelect.value = '';
+    
     filteredData = [...dashboardData];
-    document.getElementById(`filter-info-${section}`).textContent = 'Showing all data';
+    
+    if (filterInfo) {
+        filterInfo.textContent = 'Showing all data';
+    }
+    
     updateDashboard();
 }
