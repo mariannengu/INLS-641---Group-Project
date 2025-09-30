@@ -77,39 +77,44 @@
           </div>
         </div>
 
-        <!-- Vehicle Type Chart inside Overall -->
-        <div class="dashboard-card">
-          <h3 class="card-title">Bookings by Vehicle Type</h3>
-          <div id="vehicle-type-chart-overall" class="chart-container"></div>
+        <!-- Charts side by side in Overall -->
+        <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="dashboard-card">
+            <h3 class="card-title">Bookings by Vehicle Type</h3>
+            <div id="vehicle-type-chart-overall" class="chart-container"></div>
+          </div>
+          <div class="dashboard-card">
+            <h3 class="card-title">Booking Status Distribution</h3>
+            <div id="booking-status-pie-chart" class="chart-container"></div>
+          </div>
         </div>
       </section>
 
-  <!-- Vehicle Type -->
-<section id="vehicle-type" class="dashboard-section">
-    <div class="content-header">
-        <h2 class="content-title">Vehicle Type Analysis</h2>
-        <p class="content-subtitle">Breakdown by vehicle categories</p>
-    </div>
-    <div class="date-filter-container">
-        <div class="date-filter-group">
+      <!-- Vehicle Type -->
+      <section id="vehicle-type" class="dashboard-section">
+        <div class="content-header">
+          <h2 class="content-title">Vehicle Type Analysis</h2>
+          <p class="content-subtitle">Breakdown by vehicle categories</p>
+        </div>
+        <div class="date-filter-container">
+          <div class="date-filter-group">
             <label class="date-filter-label">Start Date</label>
             <select id="start-date-vehicle-type" class="date-filter-select">
-                <option value="">All Dates</option>
+              <option value="">All Dates</option>
             </select>
-        </div>
-        <div class="date-filter-group">
+          </div>
+          <div class="date-filter-group">
             <label class="date-filter-label">End Date</label>
             <select id="end-date-vehicle-type" class="date-filter-select">
-                <option value="">All Dates</option>
+              <option value="">All Dates</option>
             </select>
+          </div>
+          <button class="filter-button" onclick="applyDateFilter('vehicle-type')">Apply Filter</button>
+          <button class="reset-button" onclick="resetDateFilter('vehicle-type')">Reset</button>
+          <div class="filter-info" id="filter-info-vehicle-type">Showing all data</div>
         </div>
-        <button class="filter-button" onclick="applyDateFilter('vehicle-type')">Apply Filter</button>
-        <button class="reset-button" onclick="resetDateFilter('vehicle-type')">Reset</button>
-        <div class="filter-info" id="filter-info-vehicle-type">Showing all data</div>
-    </div>
-    <div id="vehicle-type-chart" class="chart-container"></div> <!-- Add this -->
-</section>
-
+        <div id="vehicle-type-chart" class="chart-container"></div>
+      </section>
 
       <!-- Revenue Section -->
       <section id="revenue" class="dashboard-section">

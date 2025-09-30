@@ -75,8 +75,8 @@ function updateDashboard() {
     updateKPIs();
     updateVehicleTypeChart('vehicle-type-chart');          // Vehicle Type section
     updateVehicleTypeChart('vehicle-type-chart-overall');  // Overall section
+    updateBookingStatusPieChart();  // Add pie chart update
 }
-
 
 function updateKPIs() {
     const totalBookings = filteredData.length;
@@ -91,6 +91,239 @@ function updateKPIs() {
     document.getElementById('avg-distance').textContent = avgDistance.toFixed(1) + ' km';
     document.getElementById('avg-rating').textContent = avgRating.toFixed(1);
     document.getElementById('total-revenue').textContent = '$' + totalRevenue.toLocaleString();
+}
+
+function updateBookingStatusPieChart() {
+    const statusCounts = d3.rollup(filteredData, v => v.length, d => d.bookingStatus);
+    const total = filteredData.length;
+    
+    const chartData = Array.from(statusCounts, ([status, count]) => ({
+        status,
+        count,
+        percentage: (count / total * 100).toFixed(1)
+    })).sort((a, b) => b.count - a.count);
+
+    d3.select('#booking-status-pie-chart').selectAll('*').remove();
+
+    // Create tooltip
+    let tooltip = d3.select('body').select('.pie-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'pie-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.9)')
+            .style('color', 'white')
+            .style('padding', '12px 16px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+
+    const containerWidth = document.getElementById('booking-status-pie-chart').clientWidth;
+    const width = Math.min(containerWidth, 400);
+    const height = 400;
+    const radius = Math.min(width, height) / 2 - 80;
+
+    const container = d3.select('#booking-status-pie-chart')
+        .append('div')
+        .style('display', 'flex')
+        .style('flex-direction', 'column')
+        .style('align-items', 'center')
+        .style('gap', '20px');
+
+    const svg = container
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', `translate(${width / 2},${height / 2})`);
+
+    const color = d3.scaleOrdinal()
+        .domain(chartData.map(d => d.status))
+        .range(['#4CAF50', '#FF5252', '#FF9800', '#9E9E9E', '#2196F3', '#E91E63']);
+
+    const pie = d3.pie()
+        .value(d => d.count)
+        .sort(null);
+
+    const arc = d3.arc()
+        .innerRadius(0)
+        .outerRadius(radius);
+
+    const outerArc = d3.arc()
+        .innerRadius(radius * 1.1)
+        .outerRadius(radius * 1.1);
+
+    // Draw pie slices
+    const slices = svg.selectAll('path')
+        .data(pie(chartData))
+        .enter()
+        .append('path')
+        .attr('d', arc)
+        .attr('fill', d => color(d.data.status))
+        .attr('stroke', 'white')
+        .style('stroke-width', '2px')
+        .style('opacity', 0)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style('opacity', 1)
+                .attr('transform', function() {
+                    const [x, y] = arc.centroid(d);
+                    return `translate(${x * 0.1}, ${y * 0.1})`;
+                });
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>${d.data.status}</strong><br/>
+                       Count: ${d.data.count.toLocaleString()}<br/>
+                       Percentage: ${d.data.percentage}%`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style('opacity', 0.9)
+                .attr('transform', 'translate(0, 0)');
+            
+            tooltip.style('opacity', 0);
+        });
+
+    // Animate slices
+    slices.transition()
+        .duration(800)
+        .delay((d, i) => i * 100)
+        .style('opacity', 0.9)
+        .attrTween('d', function(d) {
+            const interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
+            return function(t) {
+                return arc(interpolate(t));
+            };
+        });
+
+    // Add polylines (leader lines)
+    const polylines = svg.selectAll('polyline')
+        .data(pie(chartData))
+        .enter()
+        .append('polyline')
+        .attr('points', function(d) {
+            const pos = outerArc.centroid(d);
+            pos[0] = radius * 1.15 * (midAngle(d) < Math.PI ? 1 : -1);
+            return [arc.centroid(d), outerArc.centroid(d), pos];
+        })
+        .style('fill', 'none')
+        .style('stroke', '#333')
+        .style('stroke-width', '1.5px')
+        .style('opacity', 0);
+
+    // Animate polylines
+    polylines.transition()
+        .duration(800)
+        .delay((d, i) => i * 100 + 800)
+        .style('opacity', 0.7);
+
+    // Add percentage labels
+    const labels = svg.selectAll('text')
+        .data(pie(chartData))
+        .enter()
+        .append('text')
+        .attr('transform', function(d) {
+            const pos = outerArc.centroid(d);
+            pos[0] = radius * 1.2 * (midAngle(d) < Math.PI ? 1 : -1);
+            return `translate(${pos})`;
+        })
+        .style('text-anchor', function(d) {
+            return midAngle(d) < Math.PI ? 'start' : 'end';
+        })
+        .style('font-size', '13px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .style('opacity', 0)
+        .each(function(d) {
+            const el = d3.select(this);
+            el.append('tspan')
+                .attr('x', 0)
+                .attr('dy', '0em')
+                .text(d.data.status);
+            el.append('tspan')
+                .attr('x', 0)
+                .attr('dy', '1.2em')
+                .style('font-size', '12px')
+                .style('fill', '#666')
+                .text(`${d.data.percentage}%`);
+        });
+
+    // Animate labels
+    labels.transition()
+        .duration(800)
+        .delay((d, i) => i * 100 + 800)
+        .style('opacity', 1);
+
+    // Create legend
+    const legend = container
+        .append('div')
+        .style('display', 'flex')
+        .style('flex-wrap', 'wrap')
+        .style('justify-content', 'center')
+        .style('gap', '15px')
+        .style('max-width', '100%')
+        .style('padding', '10px');
+
+    chartData.forEach(d => {
+        const legendItem = legend.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('gap', '8px')
+            .style('cursor', 'pointer')
+            .on('mouseover', function() {
+                // Highlight corresponding slice
+                svg.selectAll('path')
+                    .filter(slice => slice.data.status === d.status)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 1)
+                    .attr('transform', function(slice) {
+                        const [x, y] = arc.centroid(slice);
+                        return `translate(${x * 0.1}, ${y * 0.1})`;
+                    });
+            })
+            .on('mouseout', function() {
+                svg.selectAll('path')
+                    .filter(slice => slice.data.status === d.status)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0.9)
+                    .attr('transform', 'translate(0, 0)');
+            });
+
+        legendItem.append('div')
+            .style('width', '16px')
+            .style('height', '16px')
+            .style('background-color', color(d.status))
+            .style('border-radius', '3px');
+
+        legendItem.append('span')
+            .style('font-size', '13px')
+            .style('color', '#333')
+            .text(`${d.status} (${d.percentage}%)`);
+    });
+
+    function midAngle(d) {
+        return d.startAngle + (d.endAngle - d.startAngle) / 2;
+    }
 }
 
 function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
@@ -150,20 +383,18 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
         .append('rect')
         .attr('class', 'bar')
         .attr('x', d => x(d.vehicleType))
-        .attr('y', height)  // Start from bottom
+        .attr('y', height)
         .attr('width', x.bandwidth())
-        .attr('height', 0)  // Start with 0 height
+        .attr('height', 0)
         .attr('fill', d => color(d.vehicleType))
         .attr('opacity', 0)
-        .style('cursor', 'pointer')  // Show it's clickable
+        .style('cursor', 'pointer')
         .on('mouseover', function(event, d) {
-            // Highlight the bar
             d3.select(this)
                 .transition()
                 .duration(200)
                 .attr('opacity', 1);
             
-            // Show tooltip
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>${d.vehicleType}</strong><br/>Bookings: ${d.count.toLocaleString()}`)
@@ -171,25 +402,22 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
                 .style('top', (event.pageY - 10) + 'px');
         })
         .on('mousemove', function(event) {
-            // Update tooltip position as mouse moves
             tooltip
                 .style('left', (event.pageX + 10) + 'px')
                 .style('top', (event.pageY - 10) + 'px');
         })
         .on('mouseout', function() {
-            // Reset bar opacity
             d3.select(this)
                 .transition()
                 .duration(200)
                 .attr('opacity', 0.8);
             
-            // Hide tooltip
             tooltip.style('opacity', 0);
         })
-        .transition()  // Add transition
-        .duration(800)  // 800ms animation
-        .delay((d, i) => i * 100)  // Stagger each bar by 100ms
-        .ease(d3.easeCubicOut)  // Smooth easing
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 100)
+        .ease(d3.easeCubicOut)
         .attr('y', d => y(d.count))
         .attr('height', d => height - y(d.count))
         .attr('opacity', 0.8);
@@ -231,8 +459,55 @@ function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
         .style('font-weight', 'bold')
         .style('fill', '#333')
         .text('Number of Bookings');
-}
 
+    // Add value labels on top of bars
+    const labels = svg.selectAll('.label')
+        .data(chartData)
+        .enter()
+        .append('text')
+        .attr('class', 'label')
+        .attr('x', d => x(d.vehicleType) + x.bandwidth() / 2)
+        .attr('y', d => y(d.count) - 5)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .style('opacity', 0)
+        .style('pointer-events', 'none')
+        .text(d => d.count.toLocaleString());
+
+    // Add click interaction to bars
+    svg.selectAll('.bar')
+        .on('click', function(event, d) {
+            const clickedBar = d3.select(this);
+            const isActive = clickedBar.classed('active');
+            
+            svg.selectAll('.bar').classed('active', false).attr('opacity', 0.8);
+            svg.selectAll('.label').transition().duration(200).style('opacity', 0);
+            
+            if (!isActive) {
+                clickedBar.classed('active', true).attr('opacity', 1);
+                
+                svg.selectAll('.label')
+                    .filter(label => label.vehicleType === d.vehicleType)
+                    .transition()
+                    .duration(300)
+                    .style('opacity', 1);
+            }
+        })
+        .on('mouseenter', function() {
+            const bar = d3.select(this);
+            if (!bar.classed('active')) {
+                bar.transition().duration(200).attr('opacity', 1);
+            }
+        })
+        .on('mouseleave', function() {
+            const bar = d3.select(this);
+            if (!bar.classed('active')) {
+                bar.transition().duration(200).attr('opacity', 0.8);
+            }
+        });
+}
 
 function populateDateDropdowns() {
     const sections = ['overall', 'vehicle-type', 'revenue', 'booking-status'];
