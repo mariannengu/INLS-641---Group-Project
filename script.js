@@ -1,5 +1,8 @@
 let dashboardData = [];
-let filteredData = [];
+let filteredDataOverall = [];
+let filteredDataVehicleType = [];
+let filteredDataRevenue = [];
+let filteredDataBookingStatus = [];
 let allDates = [];
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -14,9 +17,13 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             const sectionId = this.getAttribute('data-section');
             document.getElementById(sectionId).classList.add('active');
+            
+            // Load charts when navigating to specific sections
+            if (sectionId === 'vehicle-type-page') {
+                updateVehicleTypeMetricChart();
+            }
         });
     });
-
     loadCSVData();
 });
 
@@ -48,11 +55,16 @@ function loadCSVData() {
             paymentMethod: d['Payment Method']
         }));
 
-        filteredData = [...dashboardData];
+        // Initialize all filtered data arrays independently
+        filteredDataOverall = [...dashboardData];
+        filteredDataVehicleType = [...dashboardData];
+        filteredDataRevenue = [...dashboardData];
+        filteredDataBookingStatus = [...dashboardData];
+        
         allDates = [...new Set(dashboardData.map(d => d.date).filter(d => d))].sort();
         
         populateDateDropdowns();
-        updateDashboard();
+        updateDashboardOverall();
         
     }).catch(function(error) {
         console.error('Error loading CSV:', error);
@@ -71,18 +83,18 @@ function showError(message) {
     document.querySelector('.main-content').insertBefore(errorDiv, document.querySelector('.dashboard-section'));
 }
 
-function updateDashboard() {
-    updateKPIs();
-    updateVehicleTypeChart('vehicle-type-chart-overall');
-    updateBookingStatusPieChart();
+function updateDashboardOverall() {
+    updateKPIs(filteredDataOverall);
+    updateVehicleTypeChart('vehicle-type-chart-overall', filteredDataOverall);
+    updateBookingStatusPieChart(filteredDataOverall);
 }
 
-function updateKPIs() {
-    const totalBookings = filteredData.length;
-    const completedRides = filteredData.filter(d => d.bookingStatus === 'Completed').length;
-    const avgDistance = d3.mean(filteredData.filter(d => d.rideDistance !== null), d => d.rideDistance) || 0;
-    const avgRating = d3.mean(filteredData.filter(d => d.driverRating !== null), d => d.driverRating) || 0;
-    const validRevenueData = filteredData.filter(d => d.bookingValue !== null && !isNaN(d.bookingValue));
+function updateKPIs(data) {
+    const totalBookings = data.length;
+    const completedRides = data.filter(d => d.bookingStatus === 'Completed').length;
+    const avgDistance = d3.mean(data.filter(d => d.rideDistance !== null), d => d.rideDistance) || 0;
+    const avgRating = d3.mean(data.filter(d => d.driverRating !== null), d => d.driverRating) || 0;
+    const validRevenueData = data.filter(d => d.bookingValue !== null && !isNaN(d.bookingValue));
     const totalRevenue = d3.sum(validRevenueData, d => d.bookingValue) || 0;
 
     document.getElementById('total-bookings').textContent = totalBookings.toLocaleString();
@@ -92,9 +104,9 @@ function updateKPIs() {
     document.getElementById('total-revenue').textContent = '$' + totalRevenue.toLocaleString();
 }
 
-function updateBookingStatusPieChart() {
-    const statusCounts = d3.rollup(filteredData, v => v.length, d => d.bookingStatus);
-    const total = filteredData.length;
+function updateBookingStatusPieChart(data) {
+    const statusCounts = d3.rollup(data, v => v.length, d => d.bookingStatus);
+    const total = data.length;
     
     const chartData = Array.from(statusCounts, ([status, count]) => ({
         status,
@@ -305,8 +317,8 @@ function updateBookingStatusPieChart() {
     }
 }
 
-function updateVehicleTypeChart(containerId = 'vehicle-type-chart') {
-    const vehicleTypeCounts = d3.rollup(filteredData, v => v.length, d => d.vehicleType);
+function updateVehicleTypeChart(containerId, data) {
+    const vehicleTypeCounts = d3.rollup(data, v => v.length, d => d.vehicleType);
     const chartData = Array.from(vehicleTypeCounts, ([vehicleType, count]) => ({ vehicleType, count }))
         .sort((a, b) => b.count - a.count);
 
@@ -466,6 +478,7 @@ function applyDateFilter(section) {
     const startDate = document.getElementById(`start-date-${section}`).value;
     const endDate = document.getElementById(`end-date-${section}`).value;
     
+    let filteredData;
     if (!startDate && !endDate) {
         filteredData = [...dashboardData];
     } else if (startDate && !endDate) {
@@ -474,6 +487,22 @@ function applyDateFilter(section) {
         filteredData = dashboardData.filter(d => d.date <= endDate);
     } else {
         filteredData = dashboardData.filter(d => d.date >= startDate && d.date <= endDate);
+    }
+    
+    // Update the appropriate section's filtered data
+    if (section === 'overall') {
+        filteredDataOverall = filteredData;
+        updateDashboardOverall();
+    } else if (section === 'vehicle-type-page') {
+    filteredDataVehicleType = filteredData;
+    updateVehicleTypeMetricChart();
+        // Update vehicle type page charts when they exist
+    } else if (section === 'revenue') {
+        filteredDataRevenue = filteredData;
+        // Update revenue page charts when they exist
+    } else if (section === 'booking-status') {
+        filteredDataBookingStatus = filteredData;
+        // Update booking status page charts when they exist
     }
     
     const filterInfo = document.getElementById(`filter-info-${section}`);
@@ -488,8 +517,6 @@ function applyDateFilter(section) {
             filterInfo.textContent = `Filtered: Until ${endDate} (${filteredData.length} records)`;
         }
     }
-    
-    updateDashboard();
 }
 
 function resetDateFilter(section) {
@@ -500,11 +527,200 @@ function resetDateFilter(section) {
     if (startSelect) startSelect.value = '';
     if (endSelect) endSelect.value = '';
     
-    filteredData = [...dashboardData];
+    // Reset the appropriate section's filtered data
+    if (section === 'overall') {
+        filteredDataOverall = [...dashboardData];
+        updateDashboardOverall();
+    } else if (section === 'vehicle-type-page') {
+        filteredDataVehicleType = [...dashboardData];
+        updateVehicleTypeMetricChart();
+        // Update vehicle type page charts when they exist
+    } else if (section === 'revenue') {
+        filteredDataRevenue = [...dashboardData];
+        // Update revenue page charts when they exist
+    } else if (section === 'booking-status') {
+        filteredDataBookingStatus = [...dashboardData];
+        // Update booking status page charts when they exist
+    }
     
     if (filterInfo) {
         filterInfo.textContent = 'Showing all data';
     }
+}
+function updateVehicleTypeMetricChart() {
+    const metric = document.getElementById('vehicle-metric-select').value;
+    const data = filteredDataVehicleType;
     
-    updateDashboard();
+    // Calculate metrics by vehicle type
+    const vehicleTypes = [...new Set(data.map(d => d.vehicleType))];
+    const chartData = [];
+    
+    vehicleTypes.forEach(vehicleType => {
+        const vehicleData = data.filter(d => d.vehicleType === vehicleType);
+        let value = 0;
+        let label = '';
+        
+        switch(metric) {
+            case 'totalBookingValue':
+                value = d3.sum(vehicleData.filter(d => d.bookingValue !== null), d => d.bookingValue);
+                label = 'Total Booking Value ($)';
+                break;
+            case 'successBookingValue':
+                const successData = vehicleData.filter(d => d.bookingStatus === 'Completed' && d.bookingValue !== null);
+                value = d3.sum(successData, d => d.bookingValue);
+                label = 'Success Booking Value ($)';
+                break;
+            case 'avgDistance':
+                value = d3.mean(vehicleData.filter(d => d.rideDistance !== null), d => d.rideDistance) || 0;
+                label = 'Avg Distance Travelled (km)';
+                break;
+            case 'totalDistance':
+                value = d3.sum(vehicleData.filter(d => d.rideDistance !== null), d => d.rideDistance);
+                label = 'Total Distance Travelled (km)';
+                break;
+            case 'avgDriverRating':
+                value = d3.mean(vehicleData.filter(d => d.driverRating !== null), d => d.driverRating) || 0;
+                label = 'Avg Driver Rating';
+                break;
+            case 'avgCustomerRating':
+                value = d3.mean(vehicleData.filter(d => d.customerRating !== null), d => d.customerRating) || 0;
+                label = 'Avg Customer Rating';
+                break;
+        }
+        
+        chartData.push({ vehicleType, value, label });
+    });
+    
+    chartData.sort((a, b) => b.value - a.value);
+    
+    // Render chart
+    d3.select('#vehicle-type-metric-chart').selectAll('*').remove();
+    
+    let tooltip = d3.select('body').select('.chart-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '10px 15px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+    
+    const container = document.getElementById('vehicle-type-metric-chart');
+    const margin = { top: 20, right: 30, bottom: 100, left: 90 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+    
+    const svg = d3.select('#vehicle-type-metric-chart')
+        .append('svg')
+        .attr('width', container.clientWidth)
+        .attr('height', 400)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    const x = d3.scaleBand()
+        .domain(chartData.map(d => d.vehicleType))
+        .range([0, width])
+        .padding(0.3);
+    
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(chartData, d => d.value)])
+        .nice()
+        .range([height, 0]);
+    
+    const color = d3.scaleOrdinal()
+        .domain(chartData.map(d => d.vehicleType))
+        .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
+    
+    const bars = svg.selectAll('.bar')
+        .data(chartData)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => x(d.vehicleType))
+        .attr('y', height)
+        .attr('width', x.bandwidth())
+        .attr('height', 0)
+        .attr('fill', d => color(d.vehicleType))
+        .attr('opacity', 0)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('opacity', 1);
+            
+            const displayValue = metric.includes('Rating') ? d.value.toFixed(2) : 
+                                 metric.includes('avg') && metric.includes('Distance') ? d.value.toFixed(2) + ' km' :
+                                 metric.includes('Distance') ? d.value.toFixed(2) + ' km' :
+                                 '$' + d.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>${d.vehicleType}</strong><br/>${d.label}: ${displayValue}`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('opacity', 0.8);
+            
+            tooltip.style('opacity', 0);
+        });
+    
+    bars.transition()
+        .duration(800)
+        .delay((d, i) => i * 100)
+        .ease(d3.easeCubicOut)
+        .attr('y', d => y(d.value))
+        .attr('height', d => height - y(d.value))
+        .attr('opacity', 0.8);
+    
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(x))
+        .selectAll('text')
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end')
+        .style('font-size', '12px')
+        .style('fill', '#333');
+    
+    svg.append('g')
+        .call(d3.axisLeft(y))
+        .selectAll('text')
+        .style('font-size', '12px')
+        .style('fill', '#333');
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + margin.bottom - 10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Vehicle Type');
+    
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -margin.left + 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text(chartData[0].label);
 }
