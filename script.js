@@ -551,24 +551,30 @@ function updateVehicleTypeMetricChart() {
     const metric = document.getElementById('vehicle-metric-select').value;
     const data = filteredDataVehicleType;
     
+    // Normalize vehicle types - combine eBike and Bike into eBike/Bike
+    const normalizedData = data.map(d => ({
+        ...d,
+        vehicleType: (d.vehicleType === 'eBike' || d.vehicleType === 'Bike') ? 'eBike/Bike' : d.vehicleType
+    }));
+    
     // Calculate metrics by vehicle type
-    const vehicleTypes = [...new Set(data.map(d => d.vehicleType))];
+    const vehicleTypes = [...new Set(normalizedData.map(d => d.vehicleType))];
     const chartData = [];
     
     vehicleTypes.forEach(vehicleType => {
-        const vehicleData = data.filter(d => d.vehicleType === vehicleType);
+        const vehicleData = normalizedData.filter(d => d.vehicleType === vehicleType);
         let value = 0;
         let label = '';
         
         switch(metric) {
             case 'totalBookingValue':
                 value = d3.sum(vehicleData.filter(d => d.bookingValue !== null), d => d.bookingValue);
-                label = 'Total Booking Value ($)';
+                label = 'Total Booking Value in Rupees (₹)';
                 break;
             case 'successBookingValue':
                 const successData = vehicleData.filter(d => d.bookingStatus === 'Completed' && d.bookingValue !== null);
                 value = d3.sum(successData, d => d.bookingValue);
-                label = 'Success Booking Value ($)';
+                label = 'Success Booking Value in Rupees (₹)';
                 break;
             case 'avgDistance':
                 value = d3.mean(vehicleData.filter(d => d.rideDistance !== null), d => d.rideDistance) || 0;
@@ -580,18 +586,29 @@ function updateVehicleTypeMetricChart() {
                 break;
             case 'avgDriverRating':
                 value = d3.mean(vehicleData.filter(d => d.driverRating !== null), d => d.driverRating) || 0;
-                label = 'Avg Driver Rating';
+                label = 'Avg Driver Rating (Stars)';
                 break;
             case 'avgCustomerRating':
                 value = d3.mean(vehicleData.filter(d => d.customerRating !== null), d => d.customerRating) || 0;
-                label = 'Avg Customer Rating';
+                label = 'Avg Customer Rating (Stars)';
                 break;
         }
         
         chartData.push({ vehicleType, value, label });
     });
     
-    chartData.sort((a, b) => b.value - a.value);
+    // Define custom order for vehicle types
+    const sortOrder = ['Go Mini', 'Go Sedan', 'Auto', 'eBike/Bike', 'UberXL', 'Premier Sedan'];
+    
+    chartData.sort((a, b) => {
+        const indexA = sortOrder.indexOf(a.vehicleType);
+        const indexB = sortOrder.indexOf(b.vehicleType);
+        // If not in sortOrder, put at end
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
     
     // Render chart
     d3.select('#vehicle-type-metric-chart').selectAll('*').remove();
