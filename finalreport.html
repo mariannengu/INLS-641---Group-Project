@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uber Ride Analytics Dashboard - Final Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: #f8f9fa;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .section {
+            background: white;
+            margin: 2rem 0;
+            padding: 2.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            color: #000;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #000;
+        }
+
+        h3 {
+            color: #1a1a1a;
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem 0;
+        }
+
+        h4 {
+            color: #333;
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.75rem 0;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin: 1rem 0 1rem 2rem;
+        }
+
+        li {
+            margin: 0.5rem 0;
+        }
+
+        .persona-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .persona-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border-left: 4px solid #000;
+        }
+
+        .persona-card h4 {
+            margin-top: 0;
+            color: #000;
+        }
+
+        .question-category {
+            background: #f1f3f5;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 6px;
+            border-left: 4px solid #495057;
+        }
+
+        .question-category h4 {
+            margin-top: 0;
+            color: #495057;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+
+        th {
+            background: #000;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .workflow-box {
+            background: #e7f5ff;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 6px;
+            border-left: 4px solid #1971c2;
+        }
+
+        .workflow-box h4 {
+            margin-top: 0;
+            color: #1971c2;
+        }
+
+        .insight-box {
+            background: #d3f9d8;
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 6px;
+            border-left: 4px solid #37b24d;
+        }
+
+        .insight-box strong {
+            color: #2b8a3e;
+        }
+
+        .image-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .image-caption {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .tech-badge {
+            background: #000;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .challenge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .challenge-card {
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 2px solid #dee2e6;
+        }
+
+        .challenge-card.difficult {
+            background: #fff5f5;
+            border-color: #fa5252;
+        }
+
+        .challenge-card.easy {
+            background: #f3f0ff;
+            border-color: #7950f2;
+        }
+
+        .challenge-card.time-consuming {
+            background: #fff9db;
+            border-color: #fab005;
+        }
+
+        .ethical-box {
+            background: #fff5f5;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 6px;
+            border-left: 4px solid #c92a2a;
+        }
+
+        .ethical-box h4 {
+            margin-top: 0;
+            color: #c92a2a;
+        }
+
+        .footer {
+            background: #000;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        .references {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .references p {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+            text-indent: -2rem;
+        }
+
+        code {
+            background: #f1f3f5;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .kpi-highlight {
+            background: #e3fafc;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #0c8599;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .section {
+                padding: 1.5rem;
+            }
+            
+            table {
+                font-size: 0.85rem;
+            }
+            
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Uber Ride Analytics Dashboard</h1>
+        <p>Interactive Visual Analytics for India Operations - 2024</p>
+    </div>
+
+    <div class="container">
+        <!-- Project Overview -->
+        <section class="section">
+            <h2>Project Overview and Goals</h2>
+            <p>This project presents an interactive visual analytics dashboard for examining Uber ride-sharing data from Uber operations in India for the year 2024. Uber is a mobile app (and franchise with varying subsidiaries that offer distinct apps for different services, such as UberEats for food/groceries, Uber Driver for drivers, Uber Freight for businesses, etc.) designed for ride-hailing and connects passengers who need rides with drivers who provide transportation services (Berger et al., 2019).</p>
+            
+            <p>Driving for Uber is considered part of the gig economy, where anyone can register as long as they meet the local eligibility requirements. For example, in the United States, specific conditions include: minimum age to drive in your city (e.g., 25 years or older), having at least one year of licensed driving experience in the US (3 years if under 25), an in-state license, and use of an eligible 4-door vehicle (Uber Technologies Inc., n.d.).</p>
+            
+            <p><strong>The primary goal of this dashboard is to transform complex ride data into clear, actionable insights through an accessible web-based platform that helps users explore patterns and understand how services operate in real-world contexts.</strong></p>
+        </section>
+
+        <!-- Target Users -->
+        <section class="section">
+            <h2>Target User Personas</h2>
+            <p>Our dashboard was designed with three primary users in mind:</p>
+            
+            <div class="persona-grid">
+                <div class="persona-card">
+                    <h4>Ride-Sharing Business Analysts</h4>
+                    <p>Decision-makers at Uber or similar companies (like Lyft) who need to understand where rides are most requested, how to deploy drivers effectively, and how to improve the overall service experience.</p>
+                </div>
+                
+                <div class="persona-card">
+                    <h4>Urban Planners & Transportation Researchers</h4>
+                    <p>Professionals studying how ride-sharing affects city transportation to inform decisions about roads, public transit, and urban development.</p>
+                </div>
+                
+                <div class="persona-card">
+                    <h4>Operations Teams</h4>
+                    <p>Teams managing day-to-day operations, including deciding where drivers should be positioned and predicting when demand will be highest.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Key Questions -->
+        <section class="section">
+            <h2>Key Analytical Questions</h2>
+            <p>This dashboard enables users to investigate specific critical questions about Uber's operations and service:</p>
+            
+            <div class="question-category">
+                <h4>Strategic Business Questions</h4>
+                <ul>
+                    <li>Which pickup and destination zones experience the highest demand in India, and how does this vary by time of day and vehicle type?</li>
+                    <li>What factors contribute to the 25% cancellation rate, and how do customer cancellations (19.15%) differ from driver cancellations (7.45%)?</li>
+                    <li>Can we identify patterns in the 34% of rides that are either cancelled or incomplete to improve the overall success rate beyond 65.96%?</li>
+                    <li>When does Uber generate peak revenue, and how do booking values vary across different vehicle types, payment methods, and geographic zones?</li>
+                </ul>
+            </div>
+            
+            <div class="question-category">
+                <h4>Operational Efficiency Questions</h4>
+                <ul>
+                    <li>What is the relationship between driver arrival time (Avg VTAT) and customer cancellation rates?</li>
+                    <li>Which vehicle types have the busiest demand periods, and are drivers optimally distributed?</li>
+                    <li>How do trip characteristics impact customer and driver satisfaction ratings?</li>
+                </ul>
+            </div>
+            
+            <div class="question-category">
+                <h4>Customer Experience Questions</h4>
+                <ul>
+                    <li>What correlation exists between trip duration/distance and passenger satisfaction scores?</li>
+                    <li>How do payment methods influence booking completion rates and customer satisfaction?</li>
+                    <li>Which cancellation reasons are most common, and what operational changes could address these issues?</li>
+                </ul>
+            </div>
+            
+            <div class="question-category">
+                <h4>Performance Optimization Questions</h4>
+                <ul>
+                    <li>Are there specific locations or time periods where driver ratings consistently indicate service quality concerns?</li>
+                    <li>How does average customer trip duration correlate with booking values?</li>
+                    <li>What patterns emerge in incomplete rides, and what percentage of revenue is lost?</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Input Data -->
+        <section class="section">
+            <h2>Input Data</h2>
+            <p>We leveraged the Uber Ride Analytics dataset obtained from Kaggle, capturing <span class="kpi-highlight">148,770 total bookings</span> across <span class="kpi-highlight">21 distinct variables</span> (Devladdha, 2025). It is important to note that this dataset was developed to simulate realistic Uber ride-sharing operations in 2024. Given that no company would deliberately leak its data, we got permission from Professor Thakur to proceed with our analysis.</p>
+            
+            <p>While the synthetic nature of this dataset reflects realistic ride-sharing operations, the records do not represent actual Uber transactions. This allows us to comprehensively explore Uber analytics without privacy concerns or data access restrictions, making it ideal for academic research and visualization development.</p>
+
+            <h3>Data Quality Assessment</h3>
+            <p>The dataset exhibits relatively exceptional quality characteristics:</p>
+            <ul>
+                <li><strong>Completeness:</strong> Extensive coverage with minimal missing or null values across all attributes</li>
+                <li><strong>Consistency:</strong> Standardized formatting maintained throughout vehicle categories and booking status fields</li>
+                <li><strong>Temporal Coverage:</strong> Continuous year-long data collection with day-level granularity</li>
+                <li><strong>Geographic Scope:</strong> Extensive representation of diverse pickup and destination locations across India</li>
+                <li><strong>Balance:</strong> Well-proportioned representation across vehicle types, timeframes, and geographic regions</li>
+            </ul>
+
+            <h3>Dataset Variables</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Column Name</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Date</td>
+                        <td>Temporal</td>
+                        <td>Date of the booking</td>
+                    </tr>
+                    <tr>
+                        <td>Time</td>
+                        <td>Temporal</td>
+                        <td>Time of the booking</td>
+                    </tr>
+                    <tr>
+                        <td>Booking ID</td>
+                        <td>Categorical (Identifier)</td>
+                        <td>Unique identifier for each ride booking</td>
+                    </tr>
+                    <tr>
+                        <td>Booking Status</td>
+                        <td>Categorical</td>
+                        <td>Status of booking (Completed, Cancelled by Customer, etc.)</td>
+                    </tr>
+                    <tr>
+                        <td>Customer ID</td>
+                        <td>Categorical (Identifier)</td>
+                        <td>Unique identifier for customers</td>
+                    </tr>
+                    <tr>
+                        <td>Vehicle Type</td>
+                        <td>Categorical</td>
+                        <td>Go Mini, Go Sedan, Auto, eBike/Bike, UberXL, Premier Sedan</td>
+                    </tr>
+                    <tr>
+                        <td>Pickup Location</td>
+                        <td>Geospatial</td>
+                        <td>Starting location of the ride</td>
+                    </tr>
+                    <tr>
+                        <td>Drop Location</td>
+                        <td>Geospatial</td>
+                        <td>Destination location of the ride</td>
+                    </tr>
+                    <tr>
+                        <td>Avg VTAT</td>
+                        <td>Ratio (Continuous)</td>
+                        <td>Average time for driver to reach pickup (minutes)</td>
+                    </tr>
+                    <tr>
+                        <td>Avg CTAT</td>
+                        <td>Ratio (Continuous)</td>
+                        <td>Average trip duration from pickup to destination (minutes)</td>
+                    </tr>
+                    <tr>
+                        <td>Cancelled Rides by Customer</td>
+                        <td>Ratio (Count)</td>
+                        <td>Customer-initiated cancellation flag</td>
+                    </tr>
+                    <tr>
+                        <td>Reason for cancelling by Customer</td>
+                        <td>Categorical (Text)</td>
+                        <td>Reason for customer cancellation</td>
+                    </tr>
+                    <tr>
+                        <td>Cancelled Rides by Driver</td>
+                        <td>Ratio (Count)</td>
+                        <td>Driver-initiated cancellation flag</td>
+                    </tr>
+                    <tr>
+                        <td>Driver Cancellation Reason</td>
+                        <td>Categorical (Text)</td>
+                        <td>Reason for driver cancellation</td>
+                    </tr>
+                    <tr>
+                        <td>Incomplete Rides</td>
+                        <td>Ratio (Count)</td>
+                        <td>Incomplete ride flag</td>
+                    </tr>
+                    <tr>
+                        <td>Incomplete Rides Reason</td>
+                        <td>Category (Text)</td>
+                        <td>Reason for incomplete rides</td>
+                    </tr>
+                    <tr>
+                        <td>Booking Value</td>
+                        <td>Ratio (Continuous, Currency)</td>
+                        <td>Total fare amount for the ride</td>
+                    </tr>
+                    <tr>
+                        <td>Ride Distance</td>
+                        <td>Ratio (Continuous)</td>
+                        <td>Distance covered during the ride (km)</td>
+                    </tr>
+                    <tr>
+                        <td>Driver Ratings</td>
+                        <td>Interval (1-5 scale)</td>
+                        <td>Rating given to driver</td>
+                    </tr>
+                    <tr>
+                        <td>Customer Rating</td>
+                        <td>Interval (1-5 scale)</td>
+                        <td>Rating given by customer</td>
+                    </tr>
+                    <tr>
+                        <td>Payment Method</td>
+                        <td>Categorical</td>
+                        <td>UPI, Cash, Credit Card, Uber Wallet, Debit Card</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Data Access</h3>
+            <p>The dataset was acquired through direct download of the CSV file (<code>ncr_ride_bookings.csv</code>) from the Kaggle platform and stored locally for processing. This approach ensures data availability and enables offline analysis without dependency on external API connections.</p>
+        </section>
+
+        <!-- Visualization Designs -->
+        <section class="section">
+            <h2>Visualization Designs</h2>
+            
+            <h3>Design Rationale</h3>
+            <p>Our visualization strategy follows the <strong>information-seeking mantra of "overview first, zoom and filter, then details-on-demand."</strong> This approach ensures that users can quickly grasp high-level patterns before diving into specific analyses. We implemented this through a progressive disclosure dashboard across four interconnected screens, each addressing different analytical perspectives while maintaining consistent navigation and interaction patterns. We chose to use the Uber logo brand identity color guidelines from 2024 for our color scheme.</p>
+
+            <h3>Navigation Architecture</h3>
+            <p>Our dashboard features a <strong>persistent left sidebar</strong> with four main sections:</p>
+            <ul>
+                <li><strong>Overall:</strong> High-level KPIs and temporal patterns</li>
+                <li><strong>Vehicle Type:</strong> Categorical comparisons across vehicle segments</li>
+                <li><strong>Revenue:</strong> Financial metrics and geographic distribution</li>
+                <li><strong>Booking Status:</strong> Operational metrics and comparative analysis</li>
+            </ul>
+            <p><em>Rationale:</em> This categorical organization maps to natural business questions and allows users to maintain a consistent mental model as they transition between analytical perspectives.</p>
+
+            <h3>Interaction Design</h3>
+            <p><strong>Date Filtering (Text Input + Calendar View):</strong></p>
+            <ul>
+                <li>Users can select dates, which immediately updates all visualizations below</li>
+                <li>Implemented dynamic filtering using JavaScript's <code>Array.filter()</code> to subset data based on selected date ranges</li>
+                <li>Enables users to isolate specific time periods for focused analysis</li>
+                <li>Placed prominently at the top, as it affects all downstream views</li>
+            </ul>
+
+            <h3>Screen 1 - Overall</h3>
+            <p>This temporal overview dashboard provides an "overview first" by immediately answering "What's happening overall?" and "When are patterns changing?"</p>
+            
+            <h4>Summary Statistics Cards (5 KPIs)</h4>
+            <ul>
+                <li>Five key aggregated metrics displayed as distinct KPI cards</li>
+                <li>Shows total bookings, success rates, cancellation rates, and other critical measures</li>
+                <li>Large numerals with descriptive labels for at-a-glance scanning</li>
+            </ul>
+
+            <h4>Bookings by Vehicle Type (Bar Chart)</h4>
+            <ul>
+                <li>Vertical bar chart using bar length to encode ride count</li>
+                <li>Hover interactions reveal exact booking counts (details-on-demand)</li>
+                <li>Answers "Which vehicle types generate most business?"</li>
+            </ul>
+
+            <h4>Booking Status Distribution (Pie Chart)</h4>
+            <ul>
+                <li>Proportional breakdown of booking status with color-distinguishing categories</li>
+                <li>Hover tooltips show exact values and percentages</li>
+            </ul>
+
+            <h4>Bookings Over Time (Line Chart)</h4>
+            <ul>
+                <li>Time series showing ride volume with continuous temporal data</li>
+                <li>Primary visualization for identifying temporal anomalies, trends, and cyclical patterns</li>
+            </ul>
+
+            <h3>Screen 2 - Vehicle Type</h3>
+            <p>This page includes a <strong>drop-down bar chart</strong> that allows selection of different metrics based on vehicle type:</p>
+            <ul>
+                <li>Total Booking Value</li>
+                <li>Success Booking Value</li>
+                <li>Average Distance Travelled</li>
+                <li>Total Distance Travelled</li>
+                <li>Average Driver Ratings</li>
+                <li>Average Customer Ratings</li>
+            </ul>
+            <p>Users can toggle between metrics dynamically with details-on-demand available when hovering over bars. This provides a clear way to evaluate performance, usage, and satisfaction across various vehicle types.</p>
+
+            <h3>Screen 3 - Revenue</h3>
+            <p>This revenue-focused page provides financial insights and geographic analysis to answer "Where is revenue generated?" and "What drives booking values?"</p>
+
+            <h4>Payment Methods Distribution (Donut Chart)</h4>
+            <ul>
+                <li>Shows proportional breakdown of payment methods used across all bookings</li>
+                <li>Central display shows total payments (based on time frame)</li>
+                <li>Payment categories: UPI, Cash, Uber Wallet, Credit Card, and Debit Card</li>
+                <li>Color-coded segments with percentage labels for quick scanning</li>
+                <li>Answers "Which payment methods do customers prefer?"</li>
+            </ul>
+
+            <h4>Revenue by Pickup/Drop Location - Top 10 (Heatmap Matrix)</h4>
+            <ul>
+                <li>Two-dimensional matrix where pickup locations form Y-axis and drop locations form X-axis</li>
+                <li>Color intensity gradient from light yellow to dark maroon encodes revenue concentration</li>
+                <li>Displays top 10 pickup and drop locations by total revenue</li>
+                <li>Rotated axis labels (45° angle) ensure readability</li>
+                <li>Reveals high-revenue corridors between specific pickup-drop pairs</li>
+            </ul>
+
+            <h4>Price per KM Distribution (Histogram)</h4>
+            <ul>
+                <li>Vertical bar histogram showing frequency distribution of fare rates</li>
+                <li>X-axis: price per kilometer (₹0 to ₹130+) with narrow bin widths</li>
+                <li>Y-axis: frequency (number of rides) up to 18,000</li>
+                <li>Red dashed vertical line marks the mean at ₹37.88/km</li>
+                <li>Peak frequency in ₹10-20/km range with approximately 17,000 rides</li>
+                <li>Long right tail indicates premium pricing outliers</li>
+                <li>Answers "What is the typical cost structure?"</li>
+            </ul>
+
+            <h3>Screen 4 - Booking Status</h3>
+            <p>This operational efficiency dashboard examines ride completion patterns and cancellation behaviors.</p>
+
+            <h4>Booking Status Overview Cards</h4>
+            <ul>
+                <li>Four KPI cards: Total Bookings, Completed Rides (%), Cancelled Rides (%), Incomplete Rides (%)</li>
+                <li>Color-coded indicators (green for completed, red for cancelled, amber for incomplete)</li>
+            </ul>
+
+            <h4>Cancellation Breakdown (Stacked Bar Chart)</h4>
+            <ul>
+                <li>Dual-category stacked bars comparing Customer Cancellations (19.15%) vs Driver Cancellations (7.45%)</li>
+                <li>Color differentiation separates customer-initiated from driver-initiated cancellations</li>
+                <li>Answers "Who is responsible for most cancellations?"</li>
+            </ul>
+
+            <h4>Top Cancellation Reasons (Horizontal Bar Charts)</h4>
+            <ul>
+                <li>Two separate charts: one for customer reasons, one for driver reasons</li>
+                <li>Bar length encodes frequency of each cancellation reason</li>
+                <li>Sorted in descending order to prioritize most common issues</li>
+                <li>Examples: "Driver delayed," "Wrong pickup location," "Change of plans," "Safety concern"</li>
+            </ul>
+
+            <h4>Incomplete Rides Analysis (Donut Chart)</h4>
+            <ul>
+                <li>Circular chart showing proportion of incomplete rides by stated reason</li>
+                <li>Central void displays total incomplete ride count</li>
+                <li>Causes might include app crashes, payment failures, route disputes</li>
+            </ul>
+
+            <h4>Average Wait Time vs. Cancellation Rate (Scatter Plot)</h4>
+            <ul>
+                <li>X-axis: Average VTAT (Vehicle Time to Arrival) in minutes</li>
+                <li>Y-axis: Customer cancellation rate (%)</li>
+                <li>Each point represents a geographic zone or time period</li>
+                <li>Point size encodes total booking volume</li>
+                <li>Reveals correlation between driver arrival delays and customer abandonment</li>
+            </ul>
+        </section>
+
+        <!-- Data Transformation -->
+        <section class="section">
+            <h2>Data Transformation and Statistical Analysis</h2>
+            
+            <h3>Data Processing Pipeline</h3>
+            <p>Our implementation involved a multi-stage data transformation process to convert raw CSV data into actionable insights:</p>
+
+            <h4>1. Data Loading and Parsing</h4>
+            <ul>
+                <li>Utilized D3.js's <code>d3.csv()</code> function to asynchronously load the dataset</li>
+                <li>Parsed comma-separated values into JavaScript objects with structured key-value pairs</li>
+                <li>Implemented error handling with try-catch blocks for potential loading failures</li>
+            </ul>
+
+            <h4>2. Type Conversion and Data Cleaning</h4>
+            <ul>
+                <li><strong>String Sanitization:</strong> Removed extraneous quotation marks from Booking ID and Customer ID fields using <code>.replace(/"/g, '')</code></li>
+                <li><strong>Null Value Handling:</strong> Implemented conditional checks for 'null' string values across all numeric/categorical fields, converting string 'null' to JavaScript null</li>
+                <li><strong>Type Casting:</strong> Converted numeric strings using <code>parseFloat()</code> for decimal values and <code>parseInt()</code> for integer values</li>
+            </ul>
+
+            <h4>3. Data Normalization</h4>
+            <ul>
+                <li>Merged 'eBike' and 'Bike' categories into unified 'eBike/Bike' category to reduce fragmentation</li>
+                <li>Implementation: <code>vehicleType: (d.vehicleType === 'eBike' || d.vehicleType === 'Bike') ? 'eBike/Bike' : d.vehicleType</code></li>
+            </ul>
+
+            <h4>4. Aggregation and Statistical Computation</h4>
+            <ul>
+                <li><code>d3.rollup()</code> - grouping operations to aggregate data by categorical dimensions</li>
+                <li><code>d3.sum()</code> - cumulative metrics (e.g., total revenue, total distance)</li>
+                <li><code>d3.mean()</code> - average calculations (average distance, ratings)</li>
+                <li>Applied filtering before aggregation to exclude null values</li>
+            </ul>
+
+            <h4>5. Derived Metrics</h4>
+            <ul>
+                <li>Calculated completion rates by filtering <code>bookingStatus === 'Completed'</code></li>
+                <li>Computed percentage distributions for pie chart representations</li>
+                <li>Generated conditional sums for success-specific metrics</li>
+            </ul>
+
+            <h4>6. Independent Filtered Data Management</h4>
+            <ul>
+                <li>Created separate filtered datasets for each dashboard section</li>
+                <li>Enables independent date range filtering per section</li>
+                <li>Isolated state management prevents cross-contamination</li>
+            </ul>
+
+            <h3>Compromises and Trade-offs</h3>
+            
+            <h4>Geographic Simplification</h4>
+            <p><strong>Limitation:</strong> We wanted to create an interactive choropleth map showing spatial distribution of ride density in India, but the dataset only provides categorical zone labels without geographic coordinates (latitude/longitude). There were no geographic boundary files (GeoJSON/TopoJSON) available to map zone names to geographic polygons.</p>
+            <p><strong>Workaround:</strong> Instead of a traditional spatial visualization, we implemented a pickup-to-drop location heatmap using a matrix layout where pickup locations form the Y-axis and drop locations form the X-axis. This encodes revenue intensity through color saturation and shows the top 10 pickup/drop locations by total revenue, preserving geographic insight by revealing popular origin-destination pairs and high-value corridors.</p>
+
+            <h4>Null Value Strategy</h4>
+            <p>Rather than imputing missing values, we preserved data integrity by filtering null values before statistical calculations while maintaining null indicators in the dataset for transparency. This prevents artificial data generation while accepting reduced sample sizes for certain metrics.</p>
+
+            <h4>Temporal Granularity</h4>
+            <p>We provided date-range filtering (start date/end date with text input and calendar view), which allows users to select specific analysis windows and compare discrete time periods.</p>
+
+            <h4>Performance Optimization</h4>
+            <p>For the large dataset, we implemented:</p>
+            <ul>
+                <li>Efficient D3 filtering pipelines that operate on pre-loaded data in memory</li>
+                <li>Event-driven updates (only recalculating when filters change)</li>
+                <li>Debounced rendering to prevent excessive DOM manipulations</li>
+                <li>Strategic use of CSS transitions for smooth animations without JavaScript overhead</li>
+            </ul>
+
+            <h4>Visual Clarity</h4>
+            <p>We limited the number of simultaneous visualizations to prevent cognitive overload with clear section navigation to segregate analytical contexts.</p>
+        </section>
+
+        <!-- Final Design -->
+        <section class="section">
+            <h2>Final Design and Implementation</h2>
+            
+            <h3>Architecture</h3>
+            <p>Our final implementation consists of four core components that work in concert to deliver this interactive dashboard:</p>
+
+            <ul>
+                <li><strong>index.html:</strong> The primary HTML file establishing the webpage's overall structure with dashboard heading, navigation sidebar, date filtering panels, placeholder containers for D3 visualizations, and KPI stat cards</li>
+                <li><strong>script.js:</strong> The JavaScript file driving interactive functionality—handles loading/parsing CSV data, processing and cleaning the dataset, generating D3 visualizations, implementing user interactions, and dynamically populating data tables</li>
+                <li><strong>style.css:</strong> The stylesheet defining dashboard appearance and layout including font styles, colors, spacing, grid alignment, chart sizing, and responsive behavior</li>
+                <li><strong>ncr_ride_bookings.csv:</strong> The dataset containing ride booking information obtained from Kaggle</li>
+            </ul>
+
+            <h3>Technology Stack</h3>
+            <div class="tech-stack">
+                <span class="tech-badge">D3.js v7</span>
+                <span class="tech-badge">Vanilla JavaScript (ES6+)</span>
+                <span class="tech-badge">CSS3</span>
+                <span class="tech-badge">GitHub Repository</span>
+            </div>
+
+            <p><strong>D3.js v7:</strong> Core visualization library providing data binding, SVG generation, scale functions, axis rendering, transition animations, and event handling for all interactive charts</p>
+            <p><strong>Vanilla JavaScript (ES6+):</strong> Custom business logic for data filtering, state management, array manipulation, and DOM updates without framework overhead</p>
+            <p><strong>CSS3:</strong> Modern styling with flexbox/grid layouts, CSS transitions, and media queries for responsive behavior</p>
+            <p><strong>GitHub Repository:</strong> <a href="https://github.com/mariannengu/INLS-641---Group-Project" target="_blank">https://github.com/mariannengu/INLS-641---Group-Project</a></p>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li>Multi-section dashboard navigation (sidebar with four distinct sections)</li>
+                <li>Comprehensive KPI Overview (Total Bookings, Completed Rides, Average Distance, Average Rating, Total Revenue)</li>
+                <li>Independent Date Range Filtering (support for bounded and unbounded ranges)</li>
+                <li>Interactive Visualizations (bar charts, pie charts, line charts, heat maps)</li>
+                <li>Responsive Interactions (hover tooltips, real-time chart updates, loading states)</li>
+            </ul>
+        </section>
+
+        <!-- Example Workflows -->
+        <section class="section">
+            <h2>Example Analytical Workflows</h2>
+
+            <div class="workflow-box">
+                <h4>Example 1: Comparing Vehicle Type Performance Across Multiple Metrics</h4>
+                <p><strong>Question:</strong> Which vehicle types generate the most revenue, and how does this correlate with distance travelled and customer satisfaction?</p>
+                
+                <p><strong>Workflow:</strong></p>
+                <ol>
+                    <li>User navigates to the 'Vehicle Type' section via sidebar navigation</li>
+                    <li>The default view shows 'Total Booking Value in Rupees (₹)' across all vehicle types</li>
+                    <li>User hovers over each bar to see exact revenue figures in the tooltip</li>
+                    <li>User switches metric dropdown to 'Average Distance Travelled (km)' to understand trip length patterns</li>
+                    <li>User notices that Auto and eBike/Bike have higher average distances, indicating longer trips</li>
+                    <li>User then selects 'Average Driver Rating (Stars)' to assess satisfaction levels</li>
+                    <li>By comparing these three metrics, user identifies that higher-revenue vehicles also maintain driver ratings despite longer trips</li>
+                </ol>
+                
+                <div class="insight-box">
+                    <strong>Insight:</strong> More standard vehicle categories (Auto, eBike/Bike) command higher revenue through longer-distance trips while maintaining customer satisfaction, whereas premium options actually serve shorter and less frequent trips. This informs pricing strategies and fleet composition decisions.
+                </div>
+            </div>
+
+            <div class="workflow-box">
+                <h4>Example 2: Analyzing Revenue Patterns by Geographic Routes</h4>
+                <p><strong>Question:</strong> Which pickup-to-drop location pairs generate the highest revenue, and what are the average fares for these routes?</p>
+                
+                <p><strong>Workflow:</strong></p>
+                <ol>
+                    <li>User navigates to the "Revenue" section, showing the pickup/drop location heatmap</li>
+                    <li>The color-intensity matrix immediately reveals high-revenue routes through darker coloring (maroon = highest)</li>
+                    <li>User identifies "Mayur Vihar" as a high-traffic pickup location by scanning the Y-axis</li>
+                    <li>User traces across the row to see which drop locations generate the most revenue from Mayur Vihar</li>
+                    <li>User hovers over the darkest cell (e.g., "Mayur Vihar → Samaypur Badli") to trigger the tooltip</li>
+                    <li>Tooltip displays specific metrics: "Revenue: ₹8,588, Trips: 9, Avg: ₹954.22"</li>
+                    <li>User compares this to other routes by hovering over different cells</li>
+                    <li>User notices that certain corridors (e.g., business districts to residential areas) consistently show high revenue</li>
+                    <li>User applies date filters to see if these patterns hold across different time periods</li>
+                </ol>
+                
+                <div class="insight-box">
+                    <strong>Insight:</strong> High-revenue corridors between commercial and residential zones represent premium commuter routes. Routes with high trip counts but low average fares indicate volume-based revenue opportunities, while high average fares with low trip counts suggest premium, longer-distance travel. This informs surge pricing zones and driver incentive programs.
+                </div>
+            </div>
+
+            <div class="workflow-box">
+                <h4>Example 3: Investigating Cancellation Patterns to Reduce Service Failures</h4>
+                <p><strong>Question:</strong> What are the primary reasons customers and drivers cancel rides, and how does wait time influence customer cancellation behavior?</p>
+                
+                <p><strong>Workflow:</strong></p>
+                <ol>
+                    <li>User navigates to the "Booking Status" section via sidebar</li>
+                    <li>Overview KPI cards immediately show that 25% of all bookings are cancelled (19.15% by customers, 7.45% by drivers)</li>
+                    <li>User examines the Cancellation Breakdown stacked bar chart, confirming customers cancel 2.5x more frequently than drivers</li>
+                    <li>User scrolls to the Top Cancellation Reasons charts to identify specific issues</li>
+                    <li>For customer cancellations, user notices "Driver Delayed" and "Change of Plans" are the top two reasons</li>
+                    <li>For driver cancellations, user sees "Customer Not Responding" and "Pickup Location Unclear" dominate</li>
+                    <li>User then examines the Average Wait Time vs. Cancellation Rate scatter plot</li>
+                    <li>Plot reveals a clear positive correlation: zones with VTAT > 15 minutes show cancellation rates exceeding 30%</li>
+                    <li>User applies date filter to compare weekday vs. weekend patterns, finding weekend wait times are 20% longer</li>
+                    <li>User hovers over high-cancellation zones to identify specific geographic areas needing more driver supply</li>
+                </ol>
+                
+                <div class="insight-box">
+                    <strong>Insight:</strong> Customer cancellations are strongly correlated with driver arrival delays, particularly when VTAT exceeds 15 minutes. The top cancellation reasons suggest operational interventions: (1) reduce driver arrival times through better positioning algorithms, (2) improve location accuracy through enhanced GPS and address validation, (3) implement proactive customer communication about realistic wait times. Driver cancellations concentrate on communication failures, suggesting UI improvements for clearer pickup instructions. Targeting these specific pain points could reduce the overall 25% cancellation rate by 30-40%, significantly improving operational efficiency and customer satisfaction.
+                </div>
+            </div>
+
+            <div class="workflow-box">
+                <h4>Example 4: Optimizing Payment Method Strategy and Revenue Recovery</h4>
+                <p><strong>Question:</strong> How do different payment methods perform in terms of revenue generation and booking completion rates, and which methods should be prioritized?</p>
+                
+                <p><strong>Workflow:</strong></p>
+                <ol>
+                    <li>User navigates to the "Revenue" section to examine financial performance</li>
+                    <li>Payment Methods Distribution donut chart shows UPI at 30.6%, Cash at 16.9%, with a significant 32% "null" category</li>
+                    <li>User notices Credit Card transactions, while fewer in volume, might show higher average booking values</li>
+                    <li>User switches to examining the Price per KM Distribution to understand fare structure</li>
+                    <li>Histogram reveals most rides cluster in the ₹10-40/km range with mean at ₹37.88/km</li>
+                    <li>User applies date filters for the most recent month to identify trends</li>
+                    <li>User examines the pickup-to-drop heatmap to see if certain routes prefer specific payment methods</li>
+                    <li>User identifies that high-revenue routes between commercial zones show consistent patterns</li>
+                    <li>User notes the large "null" category (32%) represents a data quality issue requiring attention</li>
+                </ol>
+                
+                <div class="insight-box">
+                    <strong>Insight:</strong> UPI has emerged as the dominant payment method among recorded transactions with 30.6% usage, suggesting the platform should incentivize digital payment adoption through promotions and seamless integration. The significant 32% "null" category represents a critical data quality issue that masks true payment preferences—addressing this through mandatory payment method capture would improve business intelligence. Cash transactions at 16.9% indicate continued preference in certain segments, requiring maintained infrastructure. Implementing tiered incentives (cashback for UPI, premium vehicle access for Credit Cards) could optimize payment mix while improving data quality and overall revenue per booking.
+                </div>
+            </div>
+        </section>
+
+        <!-- Development Process -->
+        <section class="section">
+            <h2>Development Process and Reflections</h2>
+            
+            <h3>Team Dynamics</h3>
+            <p>At the start of the semester, our team consisted of three members. However, we encountered an early setback when Edlyn Jeyaraj needed to withdraw from the team due to family commitments and the decision to reduce her course load. Nonetheless, Yuting and I successfully adjusted to this change by reallocating tasks and responsibilities, which enabled us to complete all project requirements to a high standard.</p>
+
+            <h3>Adherence to Original Plans</h3>
+            <p>Our team adapted our original proposal based on technical constraints and practical realities:</p>
+            
+            <ul>
+                <li><strong>Geographic Visualization Pivot:</strong> We initially envisioned an interactive choropleth map that would show spatial distribution across the NCR region. However, the dataset's location data (categorical zone names without coordinates) made these traditional map-based visualizations infeasible and time-consuming. We pivoted to a pickup-to-drop location heatmap that preserved geographic insights through origin-destination relationships rather than spatial positioning.</li>
+                
+                <li><strong>Simplified Statistical Analysis:</strong> Rather than implementing complex predictive models or advanced statistical tests, we focused on descriptive analytics (means, sums, distributions) that directly answered business questions and were computationally efficient for real-time filtering.</li>
+                
+                <li><strong>Section-Based Architecture:</strong> We expanded from a single-page dashboard to a multi-section navigation system (Overall, Vehicle Type, Revenue, Booking Status), allowing users to focus on specific analytical contexts without overwhelming them with simultaneous visualizations.</li>
+                
+                <li><strong>Enhanced Filtering Capabilities:</strong> We implemented independent date filtering for each section—a feature not in our original proposal—which proved invaluable for comparative analysis across different time periods.</li>
+            </ul>
+
+            <h3>Challenges and Learning Moments</h3>
+
+            <div class="challenge-grid">
+                <div class="challenge-card difficult">
+                    <h4>More Difficult Than Expected</h4>
+                    <ul>
+                        <li><strong>Performance Optimization:</strong> Loading 148,000+ records without excessive lag was tedious in the beginning</li>
+                        <li><strong>Independent State Management:</strong> Implementing separate filtered datasets for each section required careful architectural planning to prevent state contamination</li>
+                        <li><strong>D3.js Data Binding:</strong> Understanding D3's enter-update-exit pattern for dynamic chart rendering proved challenging initially</li>
+                        <li><strong>Tooltip Positioning:</strong> Creating tooltips that followed the cursor without leaving the viewport required careful event handling</li>
+                    </ul>
+                </div>
+
+                <div class="challenge-card easy">
+                    <h4>Easier Than Expected</h4>
+                    <ul>
+                        <li><strong>Data Quality:</strong> The Kaggle dataset was remarkably clean with consistent formatting and minimal missing values</li>
+                        <li><strong>D3.js Learning Curve:</strong> Extensive documentation and examples made implementation smoother than anticipated</li>
+                        <li><strong>Animations:</strong> Once we understood the .transition() API, creating animations was straightforward</li>
+                        <li><strong>Color Scheme Selection:</strong> Using D3's ordinal color scales made assigning consistent colors trivial</li>
+                    </ul>
+                </div>
+
+                <div class="challenge-card time-consuming">
+                    <h4>More Time-Consuming Than Expected</h4>
+                    <ul>
+                        <li><strong>Vehicle Type Normalization:</strong> Discovering midway through development that 'eBike' and 'Bike' should be merged required refactoring aggregation functions</li>
+                        <li><strong>Responsive Layout:</strong> Ensuring charts resized appropriately and axis labels remained readable required extensive CSS tweaking</li>
+                        <li><strong>Heatmap Implementation:</strong> Our most complex visualization, taking approximately twice the estimated development time</li>
+                        <li><strong>Filter UI Feedback:</strong> Implementing the filter information display required more conditional logic than anticipated</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>Key Takeaways</h3>
+            <p>Reflecting on this semester-long project, several lessons emerged:</p>
+            <ul>
+                <li><strong>Start Simple, Add Complexity Incrementally:</strong> Beginning with basic bar charts and KPI cards provided a stable foundation. Adding the pie chart, then the metric selector, and finally the heatmap allowed us to maintain a working prototype throughout development rather than facing an "all-or-nothing" integration phase.</li>
+                
+                <li><strong>Version Control Prevented Chaos:</strong> Using GitHub with feature branches allowed us to work on different sections (Yuting on the heatmap, me on the pie chart) without conflicts. Clear commit messages and pull requests maintained code quality despite the two-person team.</li>
+                
+                <li><strong>Documentation During Development Saves Time:</strong> Writing code comments and README updates as we built features, rather than retroactively at the end, prevented memory decay and made debugging significantly easier.</li>
+            </ul>
+
+            <h3>Future Enhancements</h3>
+            <p>If we were to continue developing this project beyond the semester, we would prioritize:</p>
+            <ul>
+                <li><strong>Temporal Analysis:</strong> Adding time-series line charts showing booking trends over days/weeks/months, with the ability to detect seasonal patterns or anomalous events</li>
+                <li><strong>Driver Performance Dashboard:</strong> Creating a dedicated section analyzing driver ratings, cancellation rates, and earnings, potentially with filters to identify top/bottom performers</li>
+                <li><strong>Route Visualization:</strong> If coordinate data becomes available, implement an actual map with curved lines showing popular routes, with line thickness encoding trip frequency</li>
+                <li><strong>Export Functionality:</strong> Adding CSV download buttons for filtered datasets and PNG export for charts, enabling users to create reports outside the dashboard</li>
+                <li><strong>Advanced Filtering:</strong> Implementing range sliders for distance/revenue filters, multi-select dropdowns for vehicle types, and saved filter presets for common analysis scenarios</li>
+                <li><strong>Real-Time Updates:</strong> Connecting to a live data stream (simulated or actual) to show bookings updating in real-time, with smooth chart transitions for new data points</li>
+                <li><strong>Mobile Optimization:</strong> While our dashboard is responsive, dedicated mobile layouts with simplified charts and touch-optimized interactions would improve usability on smaller screens</li>
+            </ul>
+        </section>
+
+        <!-- Ethical Considerations -->
+        <section class="section">
+            <h2>Ethical and Societal Considerations</h2>
+            <p>Our Uber ride-sharing analytics dashboard (while designed with the good intention of providing valuable operational insights) raises a few ethical and societal considerations that merit careful examination.</p>
+
+            <div class="ethical-box">
+                <h4>Data Privacy and Anonymization</h4>
+                <p>Although our dataset is synthetic and doesn't represent actual Uber transactions, it is still equally crucial to acknowledge the potential privacy implications if such a system were deployed with real data. Ride-sharing data inherently contains sensitive information about consumers' movement patterns, routines, and behaviors. Even with anonymized Customer IDs and Booking IDs, sophisticated re-identification techniques could link trips to specific individuals (particularly for recurring routes between home and work locations).</p>
+                <p>Hypothetically, if someone already knows another person's address (it's easy to find via voting records in our modern age), they could see the exact time and places someone constantly frequents, which is a clear privacy concern that could lead to stalking. In a real-world implementation, robust anonymization protocols, differential privacy techniques, and strict access controls should be used to protect user privacy. Overall, organizations like Uber must figure out how to balance the analytical value of granular data against individuals' reasonable expectations of privacy in their daily movements.</p>
+            </div>
+
+            <div class="ethical-box">
+                <h4>Algorithmic Bias and Equity Concerns</h4>
+                <p>An equity concern we have is that our dashboard's focus on revenue optimization and high-demand zones could inadvertently reinforce existing transportation inequities. If decision-makers use these insights to prioritize driver deployment in high-revenue areas, underserved communities with lower average booking values might receive degraded service.</p>
+                <p>This can create a feedback loop where wealthier neighborhoods receive better service, while lower-income areas experience longer wait times and higher cancellation rates (exacerbating transportation access disparities). Our heatmap visualization, which highlights the top revenue-generating routes, could unintentionally encourage this behavior. Further iterations should explicitly include equity metrics (i.e., service availability across socioeconomic zones and wait time disparities) to ensure that operational efficiency doesn't come at the cost of fair access to transportation.</p>
+            </div>
+
+            <div class="ethical-box">
+                <h4>Labor and Gig Economy Implications</h4>
+                <p>Our dashboard's emphasis on driver ratings, cancellation patterns, and efficiency metrics reflects broader concerns about surveillance and labor conditions in the gig economy. While these metrics help optimize operations, they can contribute to algorithmic management systems that penalize drivers for factors beyond their control (i.e., traffic, customer behavior, navigation errors).</p>
+                <p>The 7.45% driver cancellation rate visible can raise questions like: Are drivers canceling because of safety concerns, unreasonable customer requests, or platform pressure to maintain acceptance rates? Our visualization of driver ratings could be used to identify "underperforming" drivers for deactivation, but it doesn't capture the systematic features (e.g., vehicle maintenance costs, fuel prices, platform commission rates) that affect the drivers' livelihoods. Ethical deployment of such analytics requires transparency with drivers about how their data is used and mechanisms for contesting automated decisions that affect their income.</p>
+            </div>
+
+            <div class="ethical-box">
+                <h4>Environmental and Urban Planning Impacts</h4>
+                <p>Ride-sharing services, despite promises of reducing car ownership, have been shown in some studies to increase overall vehicle miles traveled, contribute to traffic congestion, and compete with public transportation rather than complementing it. Our focus on maximizing bookings and revenue doesn't account for environmental costs.</p>
+                <p>Urban planners using this dashboard should balance operational insights with sustainability goals, perhaps prioritizing shared rides, electric vehicle adoption, or integration with public transit rather than simply maximizing individual ride volume. The geographic analysis of high-demand corridors could inform where public transportation investments would be most beneficial, potentially reducing reliance on ride-sharing altogether.</p>
+            </div>
+
+            <div class="ethical-box">
+                <h4>Transparency and Informed Consent</h4>
+                <p>If this dashboard were deployed in a real-world context, stakeholders (including drivers, passengers, and the communities where services operate) should have visibility into how their data informs business decisions. Passengers may not realize that their trip patterns, cancellation behaviors, and rating habits are aggregated and analyzed to shape service availability and pricing strategies.</p>
+                <p>Drivers may not understand how their performance metrics compare to system-wide averages or how algorithmic decisions about surge pricing and trip assignments are made. Ethical data governance requires clear communication about data collection purposes, analytical methods, and how insights translate into operational changes that affect users' experiences and livelihoods.</p>
+            </div>
+
+            <div class="ethical-box">
+                <h4>Responsible Use of Insights</h4>
+                <p>Finally, we recognize that analytics tools are value-neutral as their ethical implications depend on how decision-makers apply the insights. Our dashboard could be used to improve service equity, enhance driver safety by identifying problematic routes or times, or optimize pricing to make rides more affordable. Conversely, it could be weaponized to maximize profit extraction, intensify driver surveillance, or justify service reductions in less profitable areas.</p>
+                <p>We advocate for a framework where data-driven decisions are evaluated not just on efficiency metrics but on their impact on worker welfare, community access to transportation, environmental sustainability, and social equity. Developing such tools carries a responsibility to consider and mitigate potential harms, even when the immediate technical implementation appears neutral.</p>
+            </div>
+
+            <h3>Limitations and Reflections</h3>
+            <p>We acknowledge that our ethical considerations are incomplete and evolving:</p>
+            <ul>
+                <li>As students creating an educational project, our ability to address all ethical dimensions is limited by scope and context</li>
+                <li>The dataset itself represents a particular framing of ride-sharing that privileges certain questions over others</li>
+                <li>Real-world deployment would require more extensive ethical review, stakeholder engagement, and ongoing monitoring</li>
+                <li>We encourage future work to center ethical considerations from the beginning rather than treating them as an afterthought</li>
+            </ul>
+
+            <p><strong>Ultimately, we view data visualization not just as a technical challenge but as a communicative act with moral dimensions.</strong> Our choices about what to make visible, what to measure, and how to represent complex realities shape understanding and influence action. We hope this project demonstrates both the power and responsibility inherent in data-driven decision-making tools.</p>
+        </section>
+
+        <!-- References -->
+        <section class="section">
+            <h2>References</h2>
+            <div class="references">
+                <p>Berger, T., Frey, C. B., Levin, G., & Danda, S. R. (2019). Uber happy? Work and well-being in the "gig economy". <em>Economic Policy, 34</em>(99), 429–477. https://doi.org/10.1093/epolic/eiz007</p>
+                
+                <p>Devladdha, Y. (2025, August 7). <em>Uber Ride Analytics Dashboard</em> [Data set / Code]. Kaggle. Retrieved October 21, 2025, from https://www.kaggle.com/datasets/yashdevladdha/uber-ride-analytics-dashboard/data/code</p>
+                
+                <p>The Designing. (2024). <em>UBER — Logo & Brand Identity — Brand Guidelines 2024</em>. https://thedesigning.co/uber-logo-brand-identity-brand-guidelines-2024</p>
+                
+                <p>Uber Technologies Inc. (n.d.). <em>Driver requirements in the USA (Wichita)</em>. Retrieved October 2, 2025, from https://www.uber.com/us/en/drive/requirements/?city=wichita</p>
+            </div>
+        </section>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 INLS 641 Group Project | UNC Chapel Hill</p>
+        <p>Marianne Nguyen & Yuting | <a href="https://github.com/mariannengu/INLS-641---Group-Project" style="color: white;">GitHub Repository</a></p>
+    </div>
+</body>
+</html>
