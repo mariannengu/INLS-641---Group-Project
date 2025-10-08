@@ -9,7 +9,7 @@
 </head>
 <body>
   <div class="dashboard-container">
-    <!-- Sidebar -->
+    <!-- Navigation Side Bar -->
     <nav class="sidebar">
       <h1>
         <div class="logo-container">
@@ -30,7 +30,7 @@
 
     <!-- Main Content -->
     <main class="main-content">
-      <!-- Overall Section -->
+      <!-- Overall Page  -->
       <section id="overall" class="dashboard-section active">
         <div class="content-header">
           <h2 class="content-title">Overall Analytics</h2>
@@ -129,7 +129,7 @@
         </div>
       </section>
 
-      <!-- Revenue Section -->
+      <!-- Revenue Page -->
       <section id="revenue" class="dashboard-section">
         <div class="content-header">
           <h2 class="content-title">Revenue Analytics</h2>
@@ -167,32 +167,45 @@
         </div>
       </section>
 
-      <!-- Booking Status Section -->
+
+      <!--Booking Status Page-->
       <section id="booking-status" class="dashboard-section">
-        <div class="content-header">
-          <h2 class="content-title">Booking Status Overview</h2>
-          <p class="content-subtitle">Real-time booking performance</p>
-        </div>
-        <div class="date-filter-container">
-          <div class="date-filter-group">
-            <label class="date-filter-label">Start Date</label>
-            <input type="date" id="start-date-booking-status" class="date-filter-input">
-          </div>
-          <div class="date-filter-group">
-            <label class="date-filter-label">End Date</label>
-            <input type="date" id="end-date-booking-status" class="date-filter-input">
-          </div>
-          <button class="filter-button" onclick="applyDateFilter('booking-status')">Apply Filter</button>
-          <button class="reset-button" onclick="resetDateFilter('booking-status')">Reset</button>
-          <div class="filter-info" id="filter-info-booking-status">Showing all data</div>
-        </div>
-        <div class="dashboard-grid">
-          <div class="dashboard-card">
-            <h3 class="card-title">Booking Status Summary</h3>
-            <div id="booking-status-chart" class="chart-container"></div>
-          </div>
-        </div>
-      </section>
+  <div class="content-header">
+    <h2 class="content-title">Booking Status Overview</h2>
+    <p class="content-subtitle">Real-time booking performance</p>
+  </div>
+  <div class="date-filter-container">
+    <div class="date-filter-group">
+      <label class="date-filter-label">Start Date</label>
+      <input type="date" id="start-date-booking-status" class="date-filter-input">
+    </div>
+    <div class="date-filter-group">
+      <label class="date-filter-label">End Date</label>
+      <input type="date" id="end-date-booking-status" class="date-filter-input">
+    </div>
+    <button class="filter-button" onclick="applyDateFilter('booking-status')">Apply Filter</button>
+    <button class="reset-button" onclick="resetDateFilter('booking-status')">Reset</button>
+    <div class="filter-info" id="filter-info-booking-status">Showing all data</div>
+  </div>
+  
+  <div class="booking-status-charts">
+    <div class="dashboard-card">
+      <h3 class="card-title">Overall Ride Distribution</h3>
+      <div id="overall-ride-distribution-chart" class="chart-container"></div>
+    </div>
+    
+    <div class="dashboard-card">
+      <h3 class="card-title">Driver Cancellation Reasons</h3>
+      <div id="driver-cancellation-chart" class="chart-container"></div>
+    </div>
+    
+    <div class="dashboard-card">
+      <h3 class="card-title">Customer Cancellation Reasons</h3>
+      <div id="customer-cancellation-chart" class="chart-container"></div>
+    </div>
+  </div>
+</section>
+
     </main>
   </div>
 

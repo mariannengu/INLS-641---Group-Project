@@ -285,3 +285,17 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+.booking-status-charts {
+    display: grid;
+    grid-template-columns: 40% 30% 30%;
+    gap: 20px;
+    align-items: start;
+}
+
+#driver-cancellation-chart,
+#customer-cancellation-chart {
+  width: 245px;
+  height: 210px;
+  margin: 0 auto;
+}

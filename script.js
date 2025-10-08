@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateVehicleTypeMetricChart();
             } else if (sectionId === 'revenue') {
                 updateRevenueCharts();
+            } else if (sectionId === 'booking-status') {
+                updateBookingStatusCharts();
             }
         });
     });
@@ -494,6 +496,7 @@ function applyDateFilter(section) {
         updateRevenueCharts();
     } else if (section === 'booking-status') {
         filteredDataBookingStatus = filteredData;
+        updateBookingStatusCharts();
     }
     
     const filterInfo = document.getElementById(`filter-info-${section}`);
@@ -529,6 +532,7 @@ function resetDateFilter(section) {
         updateRevenueCharts();
     } else if (section === 'booking-status') {
         filteredDataBookingStatus = [...dashboardData];
+        updateBookingStatusCharts();
     }
     
     if (filterInfo) {
@@ -927,6 +931,7 @@ function updateBookingsOverTimeChart(data) {
         .text('Number of Bookings');
 }
 
+// REVENUE PAGE
 function updateRevenueCharts() {
     updatePaymentMethodsChart(filteredDataRevenue);
     updatePricePerKmChart(filteredDataRevenue);
@@ -934,7 +939,14 @@ function updateRevenueCharts() {
 }
 
 function updatePaymentMethodsChart(data) {
-    const paymentCounts = d3.rollup(data.filter(d => d.paymentMethod), v => v.length, d => d.paymentMethod);
+    // Remove null, 'null', or blank payment methods that equivalate to "INCOMPLETE"
+    const validData = data.filter(d => 
+        d.paymentMethod &&
+        d.paymentMethod.trim() !== '' &&
+        d.paymentMethod.trim().toLowerCase() !== 'null'
+    );
+
+    const paymentCounts = d3.rollup(validData, v => v.length, d => d.paymentMethod);
     const total = Array.from(paymentCounts.values()).reduce((a, b) => a + b, 0);
     
     const chartData = Array.from(paymentCounts, ([method, count]) => ({
@@ -1118,6 +1130,7 @@ function updatePaymentMethodsChart(data) {
             .text(`${d.method} (${d.percentage}%)`);
     });
 }
+
 
 function updatePricePerKmChart(data) {
     const validData = data.filter(d => 
@@ -1526,4 +1539,521 @@ function updateRevenueLocationHeatmap(data) {
         .style('font-weight', 'bold')
         .style('fill', '#333')
         .text('Revenue');
+}
+
+
+// BOOKING STATUS PAGE
+
+function updateBookingStatusCharts() {
+    updateOverallRideDistribution(filteredDataBookingStatus);
+    updateDriverCancellationChart(filteredDataBookingStatus);
+    updateCustomerCancellationChart(filteredDataBookingStatus);
+}
+
+function updateOverallRideDistribution(data) {
+    const statusCounts = d3.rollup(data, v => v.length, d => d.bookingStatus);
+    const chartData = Array.from(statusCounts, ([status, count]) => ({ status, count }))
+        .sort((a, b) => b.count - a.count);
+
+    d3.select('#overall-ride-distribution-chart').selectAll('*').remove();
+
+    if (chartData.length === 0) {
+        d3.select('#overall-ride-distribution-chart')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No data available');
+        return;
+    }
+
+    let tooltip = d3.select('body').select('.chart-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '10px 15px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+
+    const container = document.getElementById('overall-ride-distribution-chart');
+    const containerWidth = container.clientWidth;
+    const margin = { top: 20, right: 20, bottom: 80, left: 60 };
+    const width = containerWidth - margin.left - margin.right;
+    const height = 280 - margin.top - margin.bottom;
+
+    const svg = d3.select('#overall-ride-distribution-chart')
+        .append('svg')
+        .attr('width', containerWidth)
+        .attr('height', 320)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand()
+        .domain(chartData.map(d => d.status))
+        .range([0, width])
+        .padding(0.3);
+
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(chartData, d => d.count)])
+        .nice()
+        .range([height, 0]);
+
+    const color = d3.scaleOrdinal()
+        .domain(chartData.map(d => d.status))
+        .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
+
+    const bars = svg.selectAll('.bar')
+        .data(chartData)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => x(d.status))
+        .attr('y', height)
+        .attr('width', x.bandwidth())
+        .attr('height', 0)
+        .attr('fill', d => color(d.status))
+        .attr('opacity', 0)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('opacity', 1);
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>${d.status}</strong><br/>Count: ${d.count.toLocaleString()}`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('opacity', 0.8);
+            
+            tooltip.style('opacity', 0);
+        });
+
+    bars.transition()
+        .duration(800)
+        .delay((d, i) => i * 100)
+        .ease(d3.easeCubicOut)
+        .attr('y', d => y(d.count))
+        .attr('height', d => height - y(d.count))
+        .attr('opacity', 0.8);
+
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(x))
+        .selectAll('text')
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end')
+        .style('font-size', '11px')
+        .style('fill', '#333');
+
+    svg.append('g')
+        .call(d3.axisLeft(y))
+        .selectAll('text')
+        .style('font-size', '9px')
+        .style('fill', '#333');
+
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + margin.bottom + 40)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Booking Status');
+
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -margin.left - 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Count');
+}
+
+function updateDriverCancellationChart(data) {
+    const cancelledData = data.filter(d => 
+        d.cancelledByDriver && 
+        d.driverCancelReason && 
+        d.driverCancelReason.trim() !== '' &&
+        d.driverCancelReason.toLowerCase() !== 'null'
+    );
+
+    const reasonCounts = d3.rollup(cancelledData, v => v.length, d => d.driverCancelReason);
+    const total = Array.from(reasonCounts.values()).reduce((a, b) => a + b, 0);
+    
+    const chartData = Array.from(reasonCounts, ([reason, count]) => ({
+        reason,
+        count,
+        percentage: (count / total * 100).toFixed(1)
+    })).sort((a, b) => b.count - a.count);
+
+    d3.select('#driver-cancellation-chart').selectAll('*').remove();
+
+    if (chartData.length === 0) {
+        d3.select('#driver-cancellation-chart')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No driver cancellation data available');
+        return;
+    }
+
+    let tooltip = d3.select('body').select('.pie-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'pie-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.9)')
+            .style('color', 'white')
+            .style('padding', '12px 16px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+
+    const container = document.getElementById('driver-cancellation-chart');
+    const containerWidth = container.clientWidth;
+    const width = Math.min(containerWidth, 280);
+    const height = 200;
+    const radius = Math.min(width, height) / 2 - 20;
+
+    const mainContainer = d3.select('#driver-cancellation-chart')
+        .append('div')
+        .style('display', 'flex')
+        .style('flex-direction', 'column')
+        .style('align-items', 'center')
+        .style('justify-content', 'flex-start')
+        .style('gap', '10px')
+        .style('padding-top', '10px');
+
+    const svg = mainContainer
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', `translate(${width / 2},${height / 2})`);
+
+    const color = d3.scaleOrdinal()
+        .domain(chartData.map(d => d.reason))
+        .range(['#6366f1', '#8b5cf6', '#a855f7', '#c084fc', '#d8b4fe', '#e9d5ff']);
+
+    const pie = d3.pie()
+        .value(d => d.count)
+        .sort(null);
+
+    const arc = d3.arc()
+        .innerRadius(0)
+        .outerRadius(radius);
+
+    const slices = svg.selectAll('path')
+        .data(pie(chartData))
+        .enter()
+        .append('path')
+        .attr('d', arc)
+        .attr('fill', d => color(d.data.reason))
+        .attr('stroke', 'white')
+        .style('stroke-width', '2px')
+        .style('opacity', 0)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style('opacity', 1)
+                .attr('transform', function() {
+                    const [x, y] = arc.centroid(d);
+                    return `translate(${x * 0.1}, ${y * 0.1})`;
+                });
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>${d.data.reason}</strong><br/>
+                       Count: ${d.data.count.toLocaleString()}<br/>
+                       Percentage: ${d.data.percentage}%`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style('opacity', 0.9)
+                .attr('transform', 'translate(0, 0)');
+            
+            tooltip.style('opacity', 0);
+        });
+
+    slices.transition()
+        .duration(800)
+        .delay((d, i) => i * 100)
+        .style('opacity', 0.9)
+        .attrTween('d', function(d) {
+            const interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
+            return function(t) {
+                return arc(interpolate(t));
+            };
+        });
+
+    const legend = mainContainer
+        .append('div')
+        .style('display', 'flex')
+        .style('flex-direction', 'column')
+        .style('gap', '5px')
+        .style('max-width', '100%')
+        .style('padding', '5px');
+
+    chartData.forEach(d => {
+        const legendItem = legend.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('gap', '8px')
+            .style('cursor', 'pointer')
+            .on('mouseover', function() {
+                svg.selectAll('path')
+                    .filter(slice => slice.data.reason === d.reason)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 1)
+                    .attr('transform', function(slice) {
+                        const [x, y] = arc.centroid(slice);
+                        return `translate(${x * 0.1}, ${y * 0.1})`;
+                    });
+            })
+            .on('mouseout', function() {
+                svg.selectAll('path')
+                    .filter(slice => slice.data.reason === d.reason)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0.9)
+                    .attr('transform', 'translate(0, 0)');
+            });
+
+        legendItem.append('div')
+            .style('width', '12px')
+            .style('height', '12px')
+            .style('background-color', color(d.reason))
+            .style('border-radius', '2px')
+            .style('flex-shrink', '0');
+
+        legendItem.append('span')
+            .style('font-size', '10px')
+            .style('color', '#333')
+            .style('line-height', '1.2')
+            .text(`${d.reason} (${d.percentage}%)`);
+    });
+}
+
+function updateCustomerCancellationChart(data) {
+    const cancelledData = data.filter(d => 
+        d.cancelledByCustomer && 
+        d.customerCancelReason && 
+        d.customerCancelReason.trim() !== '' &&
+        d.customerCancelReason.toLowerCase() !== 'null'
+    );
+
+    const reasonCounts = d3.rollup(cancelledData, v => v.length, d => d.customerCancelReason);
+    const total = Array.from(reasonCounts.values()).reduce((a, b) => a + b, 0);
+    
+    const chartData = Array.from(reasonCounts, ([reason, count]) => ({
+        reason,
+        count,
+        percentage: (count / total * 100).toFixed(1)
+    })).sort((a, b) => b.count - a.count);
+
+    d3.select('#customer-cancellation-chart').selectAll('*').remove();
+
+    if (chartData.length === 0) {
+        d3.select('#customer-cancellation-chart')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No customer cancellation data available');
+        return;
+    }
+
+    let tooltip = d3.select('body').select('.pie-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'pie-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.9)')
+            .style('color', 'white')
+            .style('padding', '12px 16px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+
+    const container = document.getElementById('customer-cancellation-chart');
+    const containerWidth = container.clientWidth;
+    const width = Math.min(containerWidth, 280);
+    const height = 200;
+    const radius = Math.min(width, height) / 2 - 20;
+
+    const mainContainer = d3.select('#customer-cancellation-chart')
+        .append('div')
+        .style('display', 'flex')
+        .style('flex-direction', 'column')
+        .style('align-items', 'center')
+        .style('justify-content', 'flex-start')
+        .style('gap', '10px')
+        .style('padding-top', '10px');
+
+    const svg = mainContainer
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', `translate(${width / 2},${height / 2})`);
+
+    const color = d3.scaleOrdinal()
+        .domain(chartData.map(d => d.reason))
+        .range(['#ec4899', '#f43f5e', '#fb923c', '#fbbf24', '#a3a3a3', '#9ca3af']);
+
+    const pie = d3.pie()
+        .value(d => d.count)
+        .sort(null);
+
+    const arc = d3.arc()
+        .innerRadius(0)
+        .outerRadius(radius);
+
+    const slices = svg.selectAll('path')
+        .data(pie(chartData))
+        .enter()
+        .append('path')
+        .attr('d', arc)
+        .attr('fill', d => color(d.data.reason))
+        .attr('stroke', 'white')
+        .style('stroke-width', '2px')
+        .style('opacity', 0)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style('opacity', 1)
+                .attr('transform', function() {
+                    const [x, y] = arc.centroid(d);
+                    return `translate(${x * 0.1}, ${y * 0.1})`;
+                });
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>${d.data.reason}</strong><br/>
+                       Count: ${d.data.count.toLocaleString()}<br/>
+                       Percentage: ${d.data.percentage}%`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style('opacity', 0.9)
+                .attr('transform', 'translate(0, 0)');
+            
+            tooltip.style('opacity', 0);
+        });
+
+    slices.transition()
+        .duration(800)
+        .delay((d, i) => i * 100)
+        .style('opacity', 0.9)
+        .attrTween('d', function(d) {
+            const interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
+            return function(t) {
+                return arc(interpolate(t));
+            };
+        });
+
+    const legend = mainContainer
+        .append('div')
+        .style('display', 'flex')
+        .style('flex-direction', 'column')
+        .style('gap', '5px')
+        .style('max-width', '100%')
+        .style('padding', '5px');
+
+    chartData.forEach(d => {
+        const legendItem = legend.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('gap', '8px')
+            .style('cursor', 'pointer')
+            .on('mouseover', function() {
+                svg.selectAll('path')
+                    .filter(slice => slice.data.reason === d.reason)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 1)
+                    .attr('transform', function(slice) {
+                        const [x, y] = arc.centroid(slice);
+                        return `translate(${x * 0.1}, ${y * 0.1})`;
+                    });
+            })
+            .on('mouseout', function() {
+                svg.selectAll('path')
+                    .filter(slice => slice.data.reason === d.reason)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0.9)
+                    .attr('transform', 'translate(0, 0)');
+            });
+
+        legendItem.append('div')
+            .style('width', '12px')
+            .style('height', '12px')
+            .style('background-color', color(d.reason))
+            .style('border-radius', '2px')
+            .style('flex-shrink', '0');
+
+        legendItem.append('span')
+            .style('font-size', '10px')
+            .style('color', '#333')
+            .style('line-height', '1.2')
+            .text(`${d.reason} (${d.percentage}%)`);
+    });
 }
