@@ -18,9 +18,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const sectionId = this.getAttribute('data-section');
             document.getElementById(sectionId).classList.add('active');
             
-            // Load charts when navigating to specific sections
             if (sectionId === 'vehicle-type-page') {
                 updateVehicleTypeMetricChart();
+            } else if (sectionId === 'revenue') {
+                updateRevenueCharts();
             }
         });
     });
@@ -55,7 +56,6 @@ function loadCSVData() {
             paymentMethod: d['Payment Method']
         }));
 
-        // Initialize all filtered data arrays independently
         filteredDataOverall = [...dashboardData];
         filteredDataVehicleType = [...dashboardData];
         filteredDataRevenue = [...dashboardData];
@@ -87,6 +87,7 @@ function updateDashboardOverall() {
     updateKPIs(filteredDataOverall);
     updateVehicleTypeChart('vehicle-type-chart-overall', filteredDataOverall);
     updateBookingStatusPieChart(filteredDataOverall);
+    updateBookingsOverTimeChart(filteredDataOverall);
 }
 
 function updateKPIs(data) {
@@ -101,7 +102,7 @@ function updateKPIs(data) {
     document.getElementById('completed-rides').textContent = completedRides.toLocaleString();
     document.getElementById('avg-distance').textContent = avgDistance.toFixed(1) + ' km';
     document.getElementById('avg-rating').textContent = avgRating.toFixed(1);
-    document.getElementById('total-revenue').textContent = '$' + totalRevenue.toLocaleString();
+    document.getElementById('total-revenue').textContent = '₹' + totalRevenue.toLocaleString();
 }
 
 function updateBookingStatusPieChart(data) {
@@ -451,25 +452,18 @@ function updateVehicleTypeChart(containerId, data) {
 function populateDateDropdowns() {
     const sections = ['overall', 'vehicle-type-page', 'revenue', 'booking-status'];
     
+    const minDate = allDates[0];
+    const maxDate = allDates[allDates.length - 1];
+    
     sections.forEach(section => {
-        const startSelect = document.getElementById(`start-date-${section}`);
-        const endSelect = document.getElementById(`end-date-${section}`);
+        const startInput = document.getElementById(`start-date-${section}`);
+        const endInput = document.getElementById(`end-date-${section}`);
         
-        if (startSelect && endSelect) {
-            startSelect.innerHTML = '<option value="">All Dates</option>';
-            endSelect.innerHTML = '<option value="">All Dates</option>';
-            
-            allDates.forEach(date => {
-                const option1 = document.createElement('option');
-                option1.value = date;
-                option1.textContent = date;
-                startSelect.appendChild(option1);
-                
-                const option2 = document.createElement('option');
-                option2.value = date;
-                option2.textContent = date;
-                endSelect.appendChild(option2);
-            });
+        if (startInput && endInput) {
+            startInput.min = minDate;
+            startInput.max = maxDate;
+            endInput.min = minDate;
+            endInput.max = maxDate;
         }
     });
 }
@@ -489,20 +483,17 @@ function applyDateFilter(section) {
         filteredData = dashboardData.filter(d => d.date >= startDate && d.date <= endDate);
     }
     
-    // Update the appropriate section's filtered data
     if (section === 'overall') {
         filteredDataOverall = filteredData;
         updateDashboardOverall();
     } else if (section === 'vehicle-type-page') {
-    filteredDataVehicleType = filteredData;
-    updateVehicleTypeMetricChart();
-        // Update vehicle type page charts when they exist
+        filteredDataVehicleType = filteredData;
+        updateVehicleTypeMetricChart();
     } else if (section === 'revenue') {
         filteredDataRevenue = filteredData;
-        // Update revenue page charts when they exist
+        updateRevenueCharts();
     } else if (section === 'booking-status') {
         filteredDataBookingStatus = filteredData;
-        // Update booking status page charts when they exist
     }
     
     const filterInfo = document.getElementById(`filter-info-${section}`);
@@ -520,44 +511,40 @@ function applyDateFilter(section) {
 }
 
 function resetDateFilter(section) {
-    const startSelect = document.getElementById(`start-date-${section}`);
-    const endSelect = document.getElementById(`end-date-${section}`);
+    const startInput = document.getElementById(`start-date-${section}`);
+    const endInput = document.getElementById(`end-date-${section}`);
     const filterInfo = document.getElementById(`filter-info-${section}`);
     
-    if (startSelect) startSelect.value = '';
-    if (endSelect) endSelect.value = '';
+    if (startInput) startInput.value = '';
+    if (endInput) endInput.value = '';
     
-    // Reset the appropriate section's filtered data
     if (section === 'overall') {
         filteredDataOverall = [...dashboardData];
         updateDashboardOverall();
     } else if (section === 'vehicle-type-page') {
         filteredDataVehicleType = [...dashboardData];
         updateVehicleTypeMetricChart();
-        // Update vehicle type page charts when they exist
     } else if (section === 'revenue') {
         filteredDataRevenue = [...dashboardData];
-        // Update revenue page charts when they exist
+        updateRevenueCharts();
     } else if (section === 'booking-status') {
         filteredDataBookingStatus = [...dashboardData];
-        // Update booking status page charts when they exist
     }
     
     if (filterInfo) {
         filterInfo.textContent = 'Showing all data';
     }
 }
+
 function updateVehicleTypeMetricChart() {
     const metric = document.getElementById('vehicle-metric-select').value;
     const data = filteredDataVehicleType;
     
-    // Normalize vehicle types - combine eBike and Bike into eBike/Bike
     const normalizedData = data.map(d => ({
         ...d,
         vehicleType: (d.vehicleType === 'eBike' || d.vehicleType === 'Bike') ? 'eBike/Bike' : d.vehicleType
     }));
     
-    // Calculate metrics by vehicle type
     const vehicleTypes = [...new Set(normalizedData.map(d => d.vehicleType))];
     const chartData = [];
     
@@ -597,20 +584,17 @@ function updateVehicleTypeMetricChart() {
         chartData.push({ vehicleType, value, label });
     });
     
-    // Define custom order for vehicle types
     const sortOrder = ['Go Mini', 'Go Sedan', 'Auto', 'eBike/Bike', 'UberXL', 'Premier Sedan'];
     
     chartData.sort((a, b) => {
         const indexA = sortOrder.indexOf(a.vehicleType);
         const indexB = sortOrder.indexOf(b.vehicleType);
-        // If not in sortOrder, put at end
         if (indexA === -1 && indexB === -1) return 0;
         if (indexA === -1) return 1;
         if (indexB === -1) return -1;
         return indexA - indexB;
     });
     
-    // Render chart
     d3.select('#vehicle-type-metric-chart').selectAll('*').remove();
     
     let tooltip = d3.select('body').select('.chart-tooltip');
@@ -677,7 +661,7 @@ function updateVehicleTypeMetricChart() {
             const displayValue = metric.includes('Rating') ? d.value.toFixed(2) : 
                                  metric.includes('avg') && metric.includes('Distance') ? d.value.toFixed(2) + ' km' :
                                  metric.includes('Distance') ? d.value.toFixed(2) + ' km' :
-                                 '$' + d.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                 '₹' + d.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
             tooltip
                 .style('opacity', 1)
@@ -740,4 +724,806 @@ function updateVehicleTypeMetricChart() {
         .style('font-weight', 'bold')
         .style('fill', '#333')
         .text(chartData[0].label);
+}
+
+function updateBookingsOverTimeChart(data) {
+    const bookingsByDate = d3.rollup(data, v => v.length, d => d.date);
+    const chartData = Array.from(bookingsByDate, ([date, count]) => ({ date, count }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+    
+    d3.select('#bookings-over-time-chart').selectAll('*').remove();
+    
+    if (chartData.length === 0) {
+        d3.select('#bookings-over-time-chart')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No data available for selected date range');
+        return;
+    }
+    
+    let tooltip = d3.select('body').select('.chart-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '10px 15px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+    
+    const container = document.getElementById('bookings-over-time-chart');
+    const margin = { top: 20, right: 30, bottom: 80, left: 70 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+    
+    const svg = d3.select('#bookings-over-time-chart')
+        .append('svg')
+        .attr('width', container.clientWidth)
+        .attr('height', 400)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    const x = d3.scaleTime()
+        .domain(d3.extent(chartData, d => new Date(d.date)))
+        .range([0, width]);
+    
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(chartData, d => d.count)])
+        .nice()
+        .range([height, 0]);
+    
+    svg.append('g')
+        .attr('class', 'grid')
+        .style('stroke', '#e0e0e0')
+        .style('stroke-opacity', 0.5)
+        .style('shape-rendering', 'crispEdges')
+        .call(d3.axisLeft(y)
+            .tickSize(-width)
+            .tickFormat('')
+        );
+    
+    const gradient = svg.append('defs')
+        .append('linearGradient')
+        .attr('id', 'area-gradient')
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '0%')
+        .attr('y2', '100%');
+    
+    gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', '#276EF1')
+        .attr('stop-opacity', 0.4);
+    
+    gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', '#276EF1')
+        .attr('stop-opacity', 0);
+    
+    const area = d3.area()
+        .x(d => x(new Date(d.date)))
+        .y0(height)
+        .y1(d => y(d.count))
+        .curve(d3.curveMonotoneX);
+    
+    svg.append('path')
+        .datum(chartData)
+        .attr('class', 'area')
+        .attr('fill', 'url(#area-gradient)')
+        .attr('d', area)
+        .style('opacity', 0)
+        .transition()
+        .duration(1000)
+        .style('opacity', 1);
+    
+    const line = d3.line()
+        .x(d => x(new Date(d.date)))
+        .y(d => y(d.count))
+        .curve(d3.curveMonotoneX);
+    
+    const path = svg.append('path')
+        .datum(chartData)
+        .attr('class', 'line')
+        .attr('fill', 'none')
+        .attr('stroke', '#276EF1')
+        .attr('stroke-width', 3)
+        .attr('d', line);
+    
+    const totalLength = path.node().getTotalLength();
+    path
+        .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+        .attr('stroke-dashoffset', totalLength)
+        .transition()
+        .duration(1500)
+        .ease(d3.easeLinear)
+        .attr('stroke-dashoffset', 0);
+    
+    const dots = svg.selectAll('.dot')
+        .data(chartData)
+        .enter()
+        .append('circle')
+        .attr('class', 'dot')
+        .attr('cx', d => x(new Date(d.date)))
+        .attr('cy', d => y(d.count))
+        .attr('r', 0)
+        .attr('fill', '#276EF1')
+        .attr('stroke', 'white')
+        .attr('stroke-width', 2)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('r', 7);
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>Date: ${d.date}</strong><br/>Bookings: ${d.count.toLocaleString()}`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('r', 4);
+            
+            tooltip.style('opacity', 0);
+        });
+    
+    dots.transition()
+        .duration(800)
+        .delay((d, i) => i * 20 + 1500)
+        .attr('r', 4);
+    
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(x)
+            .ticks(Math.min(10, chartData.length))
+            .tickFormat(d3.timeFormat('%m/%d')))
+        .selectAll('text')
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end')
+        .style('font-size', '11px')
+        .style('fill', '#333');
+    
+    svg.append('g')
+        .call(d3.axisLeft(y))
+        .selectAll('text')
+        .style('font-size', '12px')
+        .style('fill', '#333');
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + margin.bottom - 10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Date');
+    
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -margin.left + 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Number of Bookings');
+}
+
+function updateRevenueCharts() {
+    updatePaymentMethodsChart(filteredDataRevenue);
+    updatePricePerKmChart(filteredDataRevenue);
+    updateRevenueLocationHeatmap(filteredDataRevenue);
+}
+
+function updatePaymentMethodsChart(data) {
+    const paymentCounts = d3.rollup(data.filter(d => d.paymentMethod), v => v.length, d => d.paymentMethod);
+    const total = Array.from(paymentCounts.values()).reduce((a, b) => a + b, 0);
+    
+    const chartData = Array.from(paymentCounts, ([method, count]) => ({
+        method,
+        count,
+        percentage: (count / total * 100).toFixed(1)
+    })).sort((a, b) => b.count - a.count);
+
+    d3.select('#payment-methods-chart').selectAll('*').remove();
+
+    if (chartData.length === 0) {
+        d3.select('#payment-methods-chart')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No payment data available');
+        return;
+    }
+
+    let tooltip = d3.select('body').select('.chart-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.9)')
+            .style('color', 'white')
+            .style('padding', '12px 16px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+
+    const width = 280;
+    const height = 280;
+    const radius = Math.min(width, height) / 2 - 40;
+
+    const container = d3.select('#payment-methods-chart')
+        .append('div')
+        .style('display', 'flex')
+        .style('flex-direction', 'row')
+        .style('align-items', 'center')
+        .style('justify-content', 'center')
+        .style('gap', '30px')
+        .style('height', '100%');
+
+    const svg = container
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', `translate(${width / 2},${height / 2})`);
+
+    const color = d3.scaleOrdinal()
+        .domain(chartData.map(d => d.method))
+        .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
+
+    const pie = d3.pie()
+        .value(d => d.count)
+        .sort(null);
+
+    const arc = d3.arc()
+        .innerRadius(radius * 0.6)
+        .outerRadius(radius);
+
+    const slices = svg.selectAll('path')
+        .data(pie(chartData))
+        .enter()
+        .append('path')
+        .attr('d', arc)
+        .attr('fill', d => color(d.data.method))
+        .attr('stroke', 'white')
+        .style('stroke-width', '3px')
+        .style('opacity', 0)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style('opacity', 1)
+                .attr('transform', function() {
+                    const [x, y] = arc.centroid(d);
+                    return `translate(${x * 0.15}, ${y * 0.15})`;
+                });
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>${d.data.method}</strong><br/>
+                       Count: ${d.data.count.toLocaleString()}<br/>
+                       Percentage: ${d.data.percentage}%`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style('opacity', 0.9)
+                .attr('transform', 'translate(0, 0)');
+            
+            tooltip.style('opacity', 0);
+        });
+
+    slices.transition()
+        .duration(800)
+        .delay((d, i) => i * 100)
+        .style('opacity', 0.9)
+        .attrTween('d', function(d) {
+            const interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
+            return function(t) {
+                return arc(interpolate(t));
+            };
+        });
+
+    svg.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', '-0.2em')
+        .style('font-size', '24px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text(total.toLocaleString());
+    
+    svg.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', '1.2em')
+        .style('font-size', '12px')
+        .style('fill', '#666')
+        .text('Total Payments');
+
+    const legend = container
+        .append('div')
+        .style('display', 'flex')
+        .style('flex-direction', 'column')
+        .style('gap', '10px');
+
+    chartData.forEach(d => {
+        const legendItem = legend.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('gap', '10px')
+            .style('cursor', 'pointer')
+            .on('mouseover', function() {
+                svg.selectAll('path')
+                    .filter(slice => slice.data.method === d.method)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 1)
+                    .attr('transform', function(slice) {
+                        const [x, y] = arc.centroid(slice);
+                        return `translate(${x * 0.15}, ${y * 0.15})`;
+                    });
+            })
+            .on('mouseout', function() {
+                svg.selectAll('path')
+                    .filter(slice => slice.data.method === d.method)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0.9)
+                    .attr('transform', 'translate(0, 0)');
+            });
+
+        legendItem.append('div')
+            .style('width', '16px')
+            .style('height', '16px')
+            .style('background-color', color(d.method))
+            .style('border-radius', '3px')
+            .style('flex-shrink', '0');
+
+        legendItem.append('span')
+            .style('font-size', '13px')
+            .style('color', '#333')
+            .text(`${d.method} (${d.percentage}%)`);
+    });
+}
+
+function updatePricePerKmChart(data) {
+    const validData = data.filter(d => 
+        d.bookingValue !== null && 
+        d.rideDistance !== null && 
+        d.rideDistance > 0 &&
+        d.bookingValue > 0
+    ).map(d => ({
+        pricePerKm: d.bookingValue / d.rideDistance
+    }));
+
+    d3.select('#price-per-km-chart').selectAll('*').remove();
+
+    if (validData.length === 0) {
+        d3.select('#price-per-km-chart')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No valid price per km data available');
+        return;
+    }
+
+    const pricePerKmValues = validData.map(d => d.pricePerKm);
+    const mean = d3.mean(pricePerKmValues);
+
+    let tooltip = d3.select('body').select('.chart-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '10px 15px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+
+    const container = document.getElementById('price-per-km-chart');
+    const margin = { top: 20, right: 100, bottom: 60, left: 70 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 350 - margin.top - margin.bottom;
+
+    const svg = d3.select('#price-per-km-chart')
+        .append('svg')
+        .attr('width', container.clientWidth)
+        .attr('height', 350)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleLinear()
+        .domain([0, d3.quantile(pricePerKmValues.sort(d3.ascending), 0.95)])
+        .range([0, width]);
+
+    const histogram = d3.histogram()
+        .domain(x.domain())
+        .thresholds(x.ticks(30));
+
+    const bins = histogram(pricePerKmValues);
+
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(bins, d => d.length)])
+        .nice()
+        .range([height, 0]);
+
+    const bars = svg.selectAll('rect')
+        .data(bins)
+        .enter()
+        .append('rect')
+        .attr('x', d => x(d.x0) + 1)
+        .attr('width', d => Math.max(0, x(d.x1) - x(d.x0) - 1))
+        .attr('y', height)
+        .attr('height', 0)
+        .attr('fill', '#FFC043')
+        .attr('stroke', '#000')
+        .attr('stroke-width', 1)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('fill', '#FFD700');
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>Range: ₹${d.x0.toFixed(2)} - ₹${d.x1.toFixed(2)}</strong><br/>
+                       Frequency: ${d.length.toLocaleString()}`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('fill', '#FFC043');
+            
+            tooltip.style('opacity', 0);
+        });
+
+    bars.transition()
+        .duration(800)
+        .delay((d, i) => i * 20)
+        .attr('y', d => y(d.length))
+        .attr('height', d => height - y(d.length));
+
+    svg.append('line')
+        .attr('x1', x(mean))
+        .attr('x2', x(mean))
+        .attr('y1', 0)
+        .attr('y2', height)
+        .attr('stroke', 'red')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '5,5')
+        .style('opacity', 0)
+        .transition()
+        .duration(1000)
+        .delay(800)
+        .style('opacity', 0.8);
+
+    svg.append('text')
+        .attr('x', x(mean) + 5)
+        .attr('y', 15)
+        .style('fill', 'red')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .text(`Mean: ₹${mean.toFixed(2)}/km`)
+        .style('opacity', 0)
+        .transition()
+        .duration(1000)
+        .delay(800)
+        .style('opacity', 1);
+
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(x))
+        .selectAll('text')
+        .style('font-size', '11px')
+        .style('fill', '#333');
+
+    svg.append('g')
+        .call(d3.axisLeft(y))
+        .selectAll('text')
+        .style('font-size', '11px')
+        .style('fill', '#333');
+
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + margin.bottom - 10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Price per KM (₹)');
+
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -margin.left + 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Frequency');
+}
+
+function updateRevenueLocationHeatmap(data) {
+    const validData = data.filter(d => 
+        d.pickupLocation && 
+        d.dropLocation && 
+        d.bookingValue !== null && 
+        d.bookingValue > 0
+    );
+
+    d3.select('#revenue-location-heatmap').selectAll('*').remove();
+
+    if (validData.length === 0) {
+        d3.select('#revenue-location-heatmap')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No revenue location data available');
+        return;
+    }
+
+    const routeRevenue = d3.rollup(
+        validData,
+        v => ({
+            revenue: d3.sum(v, d => d.bookingValue),
+            count: v.length
+        }),
+        d => d.pickupLocation,
+        d => d.dropLocation
+    );
+
+    const pickupRevenue = new Map();
+    const dropRevenue = new Map();
+
+    routeRevenue.forEach((drops, pickup) => {
+        let total = 0;
+        drops.forEach(data => { total += data.revenue; });
+        pickupRevenue.set(pickup, total);
+    });
+
+    validData.forEach(d => {
+        dropRevenue.set(d.dropLocation, (dropRevenue.get(d.dropLocation) || 0) + d.bookingValue);
+    });
+
+    const top10Pickups = Array.from(pickupRevenue.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(d => d[0]);
+
+    const top10Drops = Array.from(dropRevenue.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(d => d[0]);
+
+    const heatmapData = [];
+    top10Pickups.forEach(pickup => {
+        top10Drops.forEach(drop => {
+            const data = routeRevenue.get(pickup)?.get(drop);
+            if (data) {
+                heatmapData.push({
+                    pickup,
+                    drop,
+                    revenue: data.revenue,
+                    count: data.count
+                });
+            }
+        });
+    });
+
+    let tooltip = d3.select('body').select('.chart-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.9)')
+            .style('color', 'white')
+            .style('padding', '12px 16px')
+            .style('border-radius', '8px')
+            .style('font-size', '13px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+
+    const container = document.getElementById('revenue-location-heatmap');
+    const margin = { top: 20, right: 120, bottom: 150, left: 150 };
+    const cellSize = 35;
+    const width = cellSize * top10Drops.length;
+    const height = cellSize * top10Pickups.length;
+
+    const svg = d3.select('#revenue-location-heatmap')
+        .append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const colorScale = d3.scaleSequential()
+        .domain([0, d3.max(heatmapData, d => d.revenue)])
+        .interpolator(d3.interpolateYlOrRd);
+
+    const cells = svg.selectAll('rect')
+        .data(heatmapData)
+        .enter()
+        .append('rect')
+        .attr('x', d => top10Drops.indexOf(d.drop) * cellSize)
+        .attr('y', d => top10Pickups.indexOf(d.pickup) * cellSize)
+        .attr('width', cellSize)
+        .attr('height', cellSize)
+        .attr('fill', 'white')
+        .attr('stroke', '#ddd')
+        .attr('stroke-width', 1)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .attr('stroke', '#000')
+                .attr('stroke-width', 2);
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>${d.pickup} → ${d.drop}</strong><br/>
+                       Revenue: ₹${d.revenue.toLocaleString()}<br/>
+                       Trips: ${d.count.toLocaleString()}<br/>
+                       Avg: ₹${(d.revenue / d.count).toFixed(2)}`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .attr('stroke', '#ddd')
+                .attr('stroke-width', 1);
+            
+            tooltip.style('opacity', 0);
+        });
+
+    cells.transition()
+        .duration(600)
+        .delay((d, i) => i * 10)
+        .attr('fill', d => colorScale(d.revenue));
+
+    svg.selectAll('.x-label')
+        .data(top10Drops)
+        .enter()
+        .append('text')
+        .attr('class', 'x-label')
+        .attr('x', (d, i) => i * cellSize + cellSize / 2)
+        .attr('y', height + 10)
+        .attr('text-anchor', 'start')
+        .attr('transform', (d, i) => `rotate(-45, ${i * cellSize + cellSize / 2}, ${height + 10})`)
+        .style('font-size', '10px')
+        .style('fill', '#333')
+        .text(d => d.length > 15 ? d.substring(0, 15) + '...' : d);
+
+    svg.selectAll('.y-label')
+        .data(top10Pickups)
+        .enter()
+        .append('text')
+        .attr('class', 'y-label')
+        .attr('x', -5)
+        .attr('y', (d, i) => i * cellSize + cellSize / 2 + 4)
+        .attr('text-anchor', 'end')
+        .style('font-size', '10px')
+        .style('fill', '#333')
+        .text(d => d.length > 20 ? d.substring(0, 20) + '...' : d);
+
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + margin.bottom - 10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Drop Location');
+
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -margin.left + 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Pickup Location');
+
+    const legendWidth = 20;
+    const legendHeight = height;
+    const legendSteps = 10;
+
+    const legendScale = d3.scaleLinear()
+        .domain([0, legendSteps])
+        .range([legendHeight, 0]);
+
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width + 20}, 0)`);
+
+    for (let i = 0; i <= legendSteps; i++) {
+        const value = (i / legendSteps) * d3.max(heatmapData, d => d.revenue);
+        legend.append('rect')
+            .attr('x', 0)
+            .attr('y', legendScale(i))
+            .attr('width', legendWidth)
+            .attr('height', legendHeight / legendSteps)
+            .attr('fill', colorScale(value));
+    }
+
+    legend.append('text')
+        .attr('x', legendWidth + 5)
+        .attr('y', 0)
+        .style('font-size', '10px')
+        .style('fill', '#333')
+        .text(`₹${d3.max(heatmapData, d => d.revenue).toLocaleString()}`);
+
+    legend.append('text')
+        .attr('x', legendWidth + 5)
+        .attr('y', legendHeight)
+        .style('font-size', '10px')
+        .style('fill', '#333')
+        .text('₹0');
+
+    legend.append('text')
+        .attr('x', legendWidth / 2)
+        .attr('y', -10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '11px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Revenue');
 }
