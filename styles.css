@@ -71,6 +71,7 @@ body {
     flex: 1;
     padding: 30px;
     overflow-y: auto;
+    /* overflow-x: hidden; */
 }
 .content-header {
     margin-bottom: 30px;
@@ -288,8 +289,8 @@ body {
 
 .booking-status-charts {
     display: grid;
-    grid-template-columns: 40% 30% 30%;
-    gap: 20px;
+    grid-template-columns: 2fr 1.5fr 1.5fr;
+    gap: 15px;
     align-items: start;
 }
 
@@ -299,3 +300,25 @@ body {
   height: 210px;
   margin: 0 auto;
 }
+
+.booking-status-charts-row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;  
+    gap: 15px;
+    margin-top: 20px;
+    align-items: start;
+    max-width: 100%;
+    /* overflow: hidden; */
+}
+
+.booking-status-charts-row2 .dashboard-card {
+    min-width: 0; 
+    /* overflow: hidden;   */
+}
+
+@media (max-width: 1200px) {
+    .booking-status-charts-row2 {
+        grid-template-columns: 1fr;  
+    }
+}
+

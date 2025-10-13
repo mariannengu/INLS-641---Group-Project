@@ -984,18 +984,19 @@ function updatePaymentMethodsChart(data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
-    const width = 280;
-    const height = 280;
-    const radius = Math.min(width, height) / 2 - 40;
+    const width = 300;
+    const height = 300;
+    const radius = Math.min(width, height) / 2 - 30;
 
     const container = d3.select('#payment-methods-chart')
         .append('div')
         .style('display', 'flex')
-        .style('flex-direction', 'row')
+        .style('flex-direction', 'column')
         .style('align-items', 'center')
-        .style('justify-content', 'center')
-        .style('gap', '30px')
-        .style('height', '100%');
+        .style('justify-content', 'flex-start')
+        .style('gap', '40px')
+        .style('height', '100%')
+        .style('padding', '20px');
 
     const svg = container
         .append('svg')
@@ -1088,14 +1089,19 @@ function updatePaymentMethodsChart(data) {
     const legend = container
         .append('div')
         .style('display', 'flex')
-        .style('flex-direction', 'column')
-        .style('gap', '10px');
+        .style('flex-direction', 'row')
+        .style('flex-wrap', 'wrap')
+        .style('justify-content', 'left')
+        .style('gap', '12px')
+        .style('max-width', '400px')
+        .style('padding', '10px');
 
     chartData.forEach(d => {
         const legendItem = legend.append('div')
             .style('display', 'flex')
             .style('align-items', 'center')
-            .style('gap', '10px')
+            .style('gap', '8px')
+            .style('min-width', '120px')
             .style('cursor', 'pointer')
             .on('mouseover', function() {
                 svg.selectAll('path')
@@ -1209,15 +1215,15 @@ function updatePricePerKmChart(data) {
         .attr('width', d => Math.max(0, x(d.x1) - x(d.x0) - 1))
         .attr('y', height)
         .attr('height', 0)
-        .attr('fill', '#FFC043')
-        .attr('stroke', '#000')
+        .attr('fill', '#3D7FF5')
+        .attr('stroke', 'white')
         .attr('stroke-width', 1)
         .style('cursor', 'pointer')
         .on('mouseover', function(event, d) {
             d3.select(this)
                 .transition()
                 .duration(200)
-                .attr('fill', '#FFD700');
+                .attr('fill', '#60a5fa');
             
             tooltip
                 .style('opacity', 1)
@@ -1235,7 +1241,7 @@ function updatePricePerKmChart(data) {
             d3.select(this)
                 .transition()
                 .duration(200)
-                .attr('fill', '#FFC043');
+                .attr('fill', '#5A95FF');
             
             tooltip.style('opacity', 0);
         });
@@ -1251,7 +1257,7 @@ function updatePricePerKmChart(data) {
         .attr('x2', x(mean))
         .attr('y1', 0)
         .attr('y2', height)
-        .attr('stroke', 'red')
+        .attr('stroke', '#F26138')
         .attr('stroke-width', 2)
         .attr('stroke-dasharray', '5,5')
         .style('opacity', 0)
@@ -1263,7 +1269,7 @@ function updatePricePerKmChart(data) {
     svg.append('text')
         .attr('x', x(mean) + 5)
         .attr('y', 15)
-        .style('fill', 'red')
+        .style('fill', '#F26138')
         .style('font-size', '12px')
         .style('font-weight', 'bold')
         .text(`Mean: ₹${mean.toFixed(2)}/km`)
@@ -1406,7 +1412,7 @@ function updateRevenueLocationHeatmap(data) {
 
     const colorScale = d3.scaleSequential()
         .domain([0, d3.max(heatmapData, d => d.revenue)])
-        .interpolator(d3.interpolateYlOrRd);
+        .interpolator(d3.interpolateBlues);
 
     const cells = svg.selectAll('rect')
         .data(heatmapData)
@@ -1459,7 +1465,7 @@ function updateRevenueLocationHeatmap(data) {
         .attr('class', 'x-label')
         .attr('x', (d, i) => i * cellSize + cellSize / 2)
         .attr('y', height + 10)
-        .attr('text-anchor', 'start')
+        .attr('text-anchor', 'end')
         .attr('transform', (d, i) => `rotate(-45, ${i * cellSize + cellSize / 2}, ${height + 10})`)
         .style('font-size', '10px')
         .style('fill', '#333')
@@ -1548,6 +1554,9 @@ function updateBookingStatusCharts() {
     updateOverallRideDistribution(filteredDataBookingStatus);
     updateDriverCancellationChart(filteredDataBookingStatus);
     updateCustomerCancellationChart(filteredDataBookingStatus);
+    updateMonthlySuccessRateChart();
+    updateHourlyDemandChart(filteredDataBookingStatus);
+    updateIncompleteRideChart(filteredDataBookingStatus);
 }
 
 function updateOverallRideDistribution(data) {
@@ -2057,3 +2066,765 @@ function updateCustomerCancellationChart(data) {
             .text(`${d.reason} (${d.percentage}%)`);
     });
 }
+
+function updateMonthlySuccessRateChart() {
+
+    const data = dashboardData;
+
+    const monthlyData = d3.rollup(
+        data,
+        v => ({
+            total: v.length,  // mongthly total bookings
+            completed: v.filter(d => d.bookingStatus === 'Completed').length  // completed bookings
+        }),
+        d => d.date.substring(0, 7)  // obtain "YYYY-MM" as month key
+    );
+
+    const chartData = Array.from(monthlyData, ([month, counts]) => ({
+        month: month,
+        successRate: counts.total > 0 ? (counts.completed / counts.total * 100) : 0,  
+        total: counts.total,
+        completed: counts.completed
+    })).sort((a, b) => a.month.localeCompare(b.month));  
+
+    d3.select('#monthly-success-rate-chart').selectAll('*').remove();
+
+    if (chartData.length === 0) {
+        d3.select('#monthly-success-rate-chart')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No data available for selected date range');
+        return;
+    }
+
+    let tooltip = d3.select('body').select('.chart-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '10px 15px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+
+    const container = document.getElementById('monthly-success-rate-chart');
+    const margin = { top: 20, right: 20, bottom: 60, left: 70 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 300 - margin.top - margin.bottom;
+    
+    const svg = d3.select('#monthly-success-rate-chart')
+        .append('svg')
+        .attr('width', container.clientWidth)
+        .attr('height', 300)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleTime()
+        .domain(d3.extent(chartData, d => new Date(d.month + '-01')))  
+        .range([0, width]);
+
+    const y = d3.scaleLinear()
+        .domain([61, 63])  
+        .nice()
+        .range([height, 0]);
+
+    svg.append('g')
+        .attr('class', 'grid')
+        .style('stroke', '#e0e0e0')
+        .style('stroke-opacity', 0.5)
+        .style('shape-rendering', 'crispEdges')
+        .call(d3.axisLeft(y)
+            .tickSize(-width)
+            .tickFormat('')
+        );
+    
+    const gradient = svg.append('defs')
+        .append('linearGradient')
+        .attr('id', 'success-rate-gradient')
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '0%')
+        .attr('y2', '100%');
+    
+    gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', '#5BC589')
+        .attr('stop-opacity', 0.4);
+    
+    gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', '#5BC589')
+        .attr('stop-opacity', 0);
+
+
+    const area = d3.area()
+        .x(d => x(new Date(d.month + '-01')))
+        .y0(height)
+        .y1(d => y(d.successRate));
+        //.curve(d3.curveMonotoneX);  
+    
+    svg.append('path')
+        .datum(chartData)
+        .attr('class', 'area')
+        .attr('fill', 'url(#success-rate-gradient)')
+        .attr('d', area)
+        .style('opacity', 0)
+        .transition()
+        .duration(1000)
+        .style('opacity', 1);
+
+    const line = d3.line()
+        .x(d => x(new Date(d.month + '-01')))
+        .y(d => y(d.successRate));
+        //.curve(d3.curveMonotoneX);
+    
+    const path = svg.append('path')
+        .datum(chartData)
+        .attr('class', 'line')
+        .attr('fill', 'none')
+        .attr('stroke', '#5BC589')
+        .attr('stroke-width', 3)
+        .attr('d', line);
+
+
+    const totalLength = path.node().getTotalLength();
+    path
+        .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+        .attr('stroke-dashoffset', totalLength)
+        .transition()
+        .duration(1500)
+        .ease(d3.easeLinear)
+        .attr('stroke-dashoffset', 0);
+
+     const dots = svg.selectAll('.dot')
+        .data(chartData)
+        .enter()
+        .append('circle')
+        .attr('class', 'dot')
+        .attr('cx', d => x(new Date(d.month + '-01')))
+        .attr('cy', d => y(d.successRate))
+        .attr('r', 0)
+        .attr('fill', '#5BC589')
+        .attr('stroke', 'white')
+        .attr('stroke-width', 2)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('r', 7);
+            
+    
+    tooltip
+        .style('opacity', 1)
+        .html(`<strong>${d.month}</strong><br/>
+            Success Rate: ${d.successRate.toFixed(1)}%<br/>
+            Completed: ${d.completed.toLocaleString()}<br/>
+            Total: ${d.total.toLocaleString()}`)
+        .style('left', (event.pageX + 10) + 'px')
+        .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('r', 4);
+            
+            tooltip.style('opacity', 0);
+        });
+
+
+    
+    dots.transition()
+        .duration(800)
+        .delay((d, i) => i * 50 + 1500)  
+        .attr('r', 4);
+    
+    // x-axis
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(x)
+            .ticks(chartData.length)
+            .tickFormat(d3.timeFormat('%Y-%m')))  // format as "YYYY-MM"
+        .selectAll('text')
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end')
+        .style('font-size', '10px')
+        .style('fill', '#333');
+    
+    // y-axis
+    svg.append('g')
+        .call(d3.axisLeft(y)
+            .ticks(5)
+            .tickFormat(d => d + '%'))  // add %
+        .selectAll('text')
+        .style('font-size', '10px')
+        .style('fill', '#333');
+
+
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + margin.bottom - 5)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Month');
+    
+
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -margin.left + 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Success Rate (%)');
+    
+}   
+
+
+
+
+// HOURLY DEMAND VS SUCCESS RATE
+function updateHourlyDemandChart(data) {
+    // ========== Data processing ==========
+    // d3 rollup by hour
+    const hourlyData = d3.rollup(
+        data,
+        v => ({
+            total: v.length,
+            completed: v.filter(d => d.bookingStatus === 'Completed').length
+        }),
+        d => {
+            
+            const hour = parseInt(d.time.split(':')[0]);
+            return hour;
+        }
+    );
+    
+    // calculate success rate from array 
+    const chartData = Array.from(hourlyData, ([hour, counts]) => ({
+        hour: hour,
+        demand: counts.total,
+        successRate: counts.total > 0 ? (counts.completed / counts.total * 100) : 0
+    })).sort((a, b) => a.hour - b.hour);
+    
+    // ensure all 24 hours are represented
+    const completeData = [];
+    for (let h = 0; h < 24; h++) {
+        const existing = chartData.find(d => d.hour === h);
+        completeData.push(existing || { hour: h, demand: 0, successRate: 0 });
+    }
+    
+    console.log('Hourly Data:', completeData);
+    
+    // ========== Clean container ==========
+    d3.select('#hourly-demand-chart').selectAll('*').remove();
+    
+    if (data.length === 0) {
+        d3.select('#hourly-demand-chart')
+            .append('div')
+            .style('text-align', 'center')
+            .style('padding', '50px')
+            .style('color', '#999')
+            .text('No data available');
+        return;
+    }
+    
+    // ========== Create tooltip ==========
+    let tooltip = d3.select('body').select('.chart-tooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0)
+            .style('background-color', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '10px 15px')
+            .style('border-radius', '8px')
+            .style('font-size', '14px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    }
+    
+    // ========== Set size and margin ==========
+    const container = document.getElementById('hourly-demand-chart');
+    const margin = { top: 10, right: 60, bottom: 60, left: 60 };  
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 280 - margin.top - margin.bottom;
+    
+    // ========== SVG ==========
+    const svg = d3.select('#hourly-demand-chart')
+        .append('svg')
+        .attr('width', container.clientWidth)
+        .attr('height', 280)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // ========== Scalband ==========
+    // X axis: hours 0-23
+    const x = d3.scaleBand()
+        .domain(completeData.map(d => d.hour))
+        .range([0, width])
+        .padding(0.2);
+    
+    // left Y axis: demand
+    const yLeft = d3.scaleLinear()
+        .domain([0, d3.max(completeData, d => d.demand)])
+        .nice()
+        .range([height, 0]);
+    
+    // rigth Y axis: success rate
+    const yRight = d3.scaleLinear()
+        .domain([0, 100])
+        .range([height, 0]);
+    
+    // ========== Grids ==========
+    svg.append('g')
+        .attr('class', 'grid')
+        .style('stroke', '#e0e0e0')
+        .style('stroke-opacity', 0.5)
+        .style('shape-rendering', 'crispEdges')
+        .call(d3.axisLeft(yLeft)
+            .tickSize(-width)
+            .tickFormat('')
+        );
+    
+    // ========== Bar chart==========
+    const bars = svg.selectAll('.bar')
+        .data(completeData)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => x(d.hour))
+        .attr('y', height)
+        .attr('width', x.bandwidth())
+        .attr('height', 0)
+        .attr('fill', '#3D7FF5')
+        .attr('opacity', 0.7)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('opacity', 1);
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>Hour: ${d.hour}:00</strong><br/>
+                       Demand: ${d.demand.toLocaleString()}<br/>
+                       Success Rate: ${d.successRate.toFixed(1)}%`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('opacity', 0.7);
+            
+            tooltip.style('opacity', 0);
+        });
+    
+    // Bar animation
+    bars.transition()
+        .duration(800)
+        .delay((d, i) => i * 30)
+        .attr('y', d => yLeft(d.demand))
+        .attr('height', d => height - yLeft(d.demand));
+    
+    // ========== Line chart ==========
+    const line = d3.line()
+        .x(d => x(d.hour) + x.bandwidth() / 2)  
+        .y(d => yRight(d.successRate))
+        .defined(d => d.demand > 0);  
+    
+    const path = svg.append('path')
+        .datum(completeData)
+        .attr('fill', 'none')
+        .attr('stroke', '#5BC589')
+        .attr('stroke-width', 3)
+        .attr('d', line);
+    
+    // Line animation
+    const totalLength = path.node().getTotalLength();
+    path
+        .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+        .attr('stroke-dashoffset', totalLength)
+        .transition()
+        .duration(1500)
+        .delay(800)
+        .ease(d3.easeLinear)
+        .attr('stroke-dashoffset', 0);
+    
+    // ========== Add dots on line ==========
+    const dots = svg.selectAll('.dot')
+        .data(completeData.filter(d => d.demand > 0))  
+        .enter()
+        .append('circle')
+        .attr('class', 'dot')
+        .attr('cx', d => x(d.hour) + x.bandwidth() / 2)
+        .attr('cy', d => yRight(d.successRate))
+        .attr('r', 0)
+        .attr('fill', '#5BC589')
+        .attr('stroke', 'white')
+        .attr('stroke-width', 2)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('r', 6);
+            
+            tooltip
+                .style('opacity', 1)
+                .html(`<strong>Hour: ${d.hour}:00</strong><br/>
+                       Demand: ${d.demand.toLocaleString()}<br/>
+                       Success Rate: ${d.successRate.toFixed(1)}%`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .attr('r', 4);
+            
+            tooltip.style('opacity', 0);
+        });
+    
+    dots.transition()
+        .duration(600)
+        .delay((d, i) => i * 40 + 2300)
+        .attr('r', 4);
+    
+    // ========== Axis ==========
+    // X axis
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(x)
+            .tickFormat(d => d + ':00'))
+        .selectAll('text')
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end')
+        .style('font-size', '10px')
+        .style('fill', '#333');
+    
+    // Left Y axis 
+    svg.append('g')
+        .call(d3.axisLeft(yLeft))
+        .selectAll('text')
+        .style('font-size', '11px')
+        .style('fill', '#333');
+    
+    // Right Y axis 
+    svg.append('g')
+        .attr('transform', `translate(${width},0)`)
+        .call(d3.axisRight(yRight)
+            .tickFormat(d => d + '%'))
+        .selectAll('text')
+        .style('font-size', '11px')
+        .style('fill', '#333');
+    
+    // ========== Add label on axis ==========
+    // X axis label
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height + margin.bottom - 10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#333')
+        .text('Hour of Day');
+    
+    // Left Y axis label
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', -margin.left + 15)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#3D7FF5')
+        .text('Demand');
+    
+    // Right Y axis label
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', width + margin.right - 10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', '#5BC589')
+        .text('Success Rate (%)');
+    
+    // ========== add legenf ==========
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width + 10}, -)`);
+    
+    // For demand
+    legend.append('rect')
+        .attr('x', 0)
+        .attr('y', 0)
+        .attr('width', 15)
+        .attr('height', 15)
+        .attr('fill', '#3D7FF5')
+        .attr('opacity', 0.7);
+    
+    legend.append('text')
+        .attr('x', 20)
+        .attr('y', 12)
+        .style('font-size', '11px')
+        .style('fill', '#333')
+        .text('Demand');
+    
+    // For success rate
+    legend.append('line')
+        .attr('x1', 0)
+        .attr('x2', 15)
+        .attr('y1', 30)
+        .attr('y2', 30)
+        .attr('stroke', '#5BC589')
+        .attr('stroke-width', 3);
+    
+    legend.append('text')
+        .attr('x', 20)
+        .attr('y', 34)
+        .style('font-size', '11px')
+        .style('fill', '#333')
+        .text('Success Rate');
+}
+
+// // INCOMPLETE RIDE REASONS
+// function updateIncompleteRideChart(data) {
+//     // ==========data processing========
+//     const incompleteData = data.filter(d => 
+//         d.incompleteRides && 
+//         d.incompleteReason && 
+//         d.incompleteReason.trim() !== '' &&
+//         d.incompleteReason.toLowerCase() !== 'null'
+//     );
+    
+//     // 按原因分组统计
+//     const reasonCounts = d3.rollup(incompleteData, v => v.length, d => d.incompleteReason);
+//     const total = Array.from(reasonCounts.values()).reduce((a, b) => a + b, 0);
+    
+//     const chartData = Array.from(reasonCounts, ([reason, count]) => ({
+//         reason,
+//         count,
+//         percentage: total > 0 ? (count / total * 100).toFixed(1) : 0
+//     })).sort((a, b) => b.count - a.count);  // 按数量降序排列
+    
+//     console.log('Incomplete Ride Data:', chartData);
+    
+//     // ========== Clean container ==========
+//     d3.select('#incomplete-ride-chart').selectAll('*').remove();
+    
+//     if (chartData.length === 0) {
+//         d3.select('#incomplete-ride-chart')
+//             .append('div')
+//             .style('text-align', 'center')
+//             .style('padding', '50px')
+//             .style('color', '#999')
+//             .text('No incomplete ride data available');
+//         return;
+//     }
+    
+//     // ========== tooltip ==========
+//     let tooltip = d3.select('body').select('.chart-tooltip');
+//     if (tooltip.empty()) {
+//         tooltip = d3.select('body')
+//             .append('div')
+//             .attr('class', 'chart-tooltip')
+//             .style('position', 'absolute')
+//             .style('opacity', 0)
+//             .style('background-color', 'rgba(0, 0, 0, 0.8)')
+//             .style('color', 'white')
+//             .style('padding', '10px 15px')
+//             .style('border-radius', '8px')
+//             .style('font-size', '14px')
+//             .style('pointer-events', 'none')
+//             .style('z-index', '1000')
+//             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+//     }
+    
+//     // ========== margin and size  ==========
+//     const container = document.getElementById('incomplete-ride-chart');
+//     const margin = { top: 20, right: 30, bottom: 120, left: 60 };  // 底部空间大，因为标签可能很长
+//     const width = container.clientWidth - margin.left - margin.right;
+//     const height = 250 - margin.top - margin.bottom;
+    
+//     // ========== create SVG ==========
+//     const svg = d3.select('#incomplete-ride-chart')
+//         .append('svg')
+//         .attr('width', container.clientWidth)
+//         .attr('height', 250)
+//         .append('g')
+//         .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+//     // ========== create scaleband ==========
+//     const x = d3.scaleBand()
+//         .domain(chartData.map(d => d.reason))
+//         .range([0, width])
+//         .padding(0.3);
+    
+//     const y = d3.scaleLinear()
+//         .domain([0, d3.max(chartData, d => d.count)])
+//         .nice()
+//         .range([height, 0]);
+    
+//    
+//     const color = d3.scaleOrdinal()
+//         .domain(chartData.map(d => d.reason))
+//         .range(['#F26138', '#FFC043', '#9A644C', '#7956BF', '#3D7FF5', '#5BC589']);
+    
+//     // ========== Grids ==========
+//     svg.append('g')
+//         .attr('class', 'grid')
+//         .style('stroke', '#e0e0e0')
+//         .style('stroke-opacity', 0.5)
+//         .style('shape-rendering', 'crispEdges')
+//         .call(d3.axisLeft(y)
+//             .tickSize(-width)
+//             .tickFormat('')
+//         );
+    
+//     // ========== Bar chart ==========
+//     const bars = svg.selectAll('.bar')
+//         .data(chartData)
+//         .enter()
+//         .append('rect')
+//         .attr('class', 'bar')
+//         .attr('x', d => x(d.reason))
+//         .attr('y', height)
+//         .attr('width', x.bandwidth())
+//         .attr('height', 0)
+//         .attr('fill', d => color(d.reason))
+//         .attr('opacity', 0.8)
+//         .style('cursor', 'pointer')
+//         .on('mouseover', function(event, d) {
+//             d3.select(this)
+//                 .transition()
+//                 .duration(200)
+//                 .attr('opacity', 1);
+            
+//             tooltip
+//                 .style('opacity', 1)
+//                 .html(`<strong>${d.reason}</strong><br/>
+//                        Count: ${d.count.toLocaleString()}<br/>
+//                        Percentage: ${d.percentage}%`)
+//                 .style('left', (event.pageX + 10) + 'px')
+//                 .style('top', (event.pageY - 10) + 'px');
+//         })
+//         .on('mousemove', function(event) {
+//             tooltip
+//                 .style('left', (event.pageX + 10) + 'px')
+//                 .style('top', (event.pageY - 10) + 'px');
+//         })
+//         .on('mouseout', function() {
+//             d3.select(this)
+//                 .transition()
+//                 .duration(200)
+//                 .attr('opacity', 0.8);
+            
+//             tooltip.style('opacity', 0);
+//         });
+    
+//     
+//     bars.transition()
+//         .duration(800)
+//         .delay((d, i) => i * 100)
+//         .ease(d3.easeCubicOut)
+//         .attr('y', d => y(d.count))
+//         .attr('height', d => height - y(d.count));
+    
+//     // ========== Label ==========
+//     svg.selectAll('.label')
+//         .data(chartData)
+//         .enter()
+//         .append('text')
+//         .attr('class', 'label')
+//         .attr('x', d => x(d.reason) + x.bandwidth() / 2)
+//         .attr('y', d => y(d.count) - 5)
+//         .attr('text-anchor', 'middle')
+//         .style('font-size', '11px')
+//         .style('font-weight', 'bold')
+//         .style('fill', '#333')
+//         .style('opacity', 0)
+//         .text(d => d.count)
+//         .transition()
+//         .duration(800)
+//         .delay((d, i) => i * 100 + 800)
+//         .style('opacity', 1);
+    
+//     // ========== axis ==========
+//     // X axis
+//     svg.append('g')
+//         .attr('transform', `translate(0,${height})`)
+//         .call(d3.axisBottom(x))
+//         .selectAll('text')
+//         .attr('transform', 'rotate(-45)')
+//         .style('text-anchor', 'end')
+//         .style('font-size', '10px')
+//         .style('fill', '#333')
+//         .text(d => d.length > 25 ? d.substring(0, 25) + '...' : d);  // 截断长文本
+    
+//     // Y axis
+//     svg.append('g')
+//         .call(d3.axisLeft(y))
+//         .selectAll('text')
+//         .style('font-size', '11px')
+//         .style('fill', '#333');
+    
+//     // ========== text on axis ==========
+//     // X axis label
+//     svg.append('text')
+//         .attr('x', width / 2)
+//         .attr('y', height + margin.bottom - 10)
+//         .attr('text-anchor', 'middle')
+//         .style('font-size', '12px')
+//         .style('font-weight', 'bold')
+//         .style('fill', '#333')
+//         .text('Incomplete Reason');
+    
+//     // Y axis label
+//     svg.append('text')
+//         .attr('transform', 'rotate(-90)')
+//         .attr('x', -height / 2)
+//         .attr('y', -margin.left + 15)
+//         .attr('text-anchor', 'middle')
+//         .style('font-size', '12px')
+//         .style('font-weight', 'bold')
+//         .style('fill', '#333')
+//         .text('Count');
+// }
+
