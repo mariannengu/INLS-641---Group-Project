@@ -1,23 +1,40 @@
-let dashboardData = [];
+// This dashboard uses D3.js (Data-Driven Documents) for data visualization (as instructed in project guidelines)
+// D3.js Documentation: https://d3js.org
+
+// GLOBAL DATA STORAGE VARIABLES 
+// Note: these variables store the data for the different sections of the dashboard (i.e., Overall, Vehicle Type, Revenue, and Booking Status)
+// We used separate filtered datasets so that each section can have independent date filtering (makes it easier later on!!)
+
+let dashboardData = []; // Master dataset (stores all CSV data)
 let filteredDataOverall = [];
 let filteredDataVehicleType = [];
 let filteredDataRevenue = [];
 let filteredDataBookingStatus = [];
-let allDates = [];
+let allDates = []; // Array of all unique dates from the dataset
 
+// PAGE INITIALIZATION (event listener runs when HTML page is fully loaded)
 document.addEventListener('DOMContentLoaded', function() {
+    // Getting all navigation links and dashboard sections
     const navLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('.dashboard-section');
 
+    // Setting up click handlers for navigation links 
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
+
+        // PREVENTING "DEFAULT LINK" BEHAVIOR
             e.preventDefault();
+
+            // Removing 'active' class from all navigation links and section but adding 'active' class to clicked link
             navLinks.forEach(l => l.classList.remove('active'));
             sections.forEach(s => s.classList.remove('active'));
             this.classList.add('active');
+
+            // Getting section ID from the data-section attribute and then ---> SHOWING THAT SECTION
             const sectionId = this.getAttribute('data-section');
             document.getElementById(sectionId).classList.add('active');
             
+            // WHEN YOU SWITCH TO SPECIFIC SECTIONS --> CHART RENDERS WITH CORRECT DIMENSIOSN WHEN SECTION BECOMES VISIBLE
             if (sectionId === 'vehicle-type-page') {
                 updateVehicleTypeMetricChart();
             } else if (sectionId === 'revenue') {
@@ -30,54 +47,88 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCSVData();
 });
 
+// CSV DATA LOADING
+// Loading/parsing CSV, initializing dashboard, and transforming each row of CSV data into a structured object
+// COLUMN IDS: Date,Time,Booking ID,Booking Status,Customer ID,Vehicle Type,Pickup Location,Drop Location,Avg VTAT,Avg CTAT,Cancelled Rides by Customer,Reason for cancelling by Customer,Cancelled Rides by Driver,Driver Cancellation Reason,Incomplete Rides,Incomplete Rides Reason,Booking Value,Ride Distance,Driver Ratings,Customer Rating,Payment Method
+// FIRST ROW: 2024-03-23,12:29:38,"""CNR5884300""",No Driver Found,"""CID1982111""",eBike,Palam Vihar,Jhilmil,null,null,null,null,null,null,null,null,null,null,null,null,null
+
 function loadCSVData() {
     showLoading();
-    
+    // Referencing https://d3-wiki.readthedocs.io/zh-cn/master/CSV/ for documentation on D3's way of loading/parsing CSV file
     d3.csv('ncr_ride_bookings.csv').then(function(data) {
+        
         dashboardData = data.map(d => ({
+            // Date and time info (clearly)
             date: d.Date,
             time: d.Time,
+
+            // Booking identifiers (REMOVING QUOTES FROM IDS)
             bookingId: d['Booking ID'].replace(/"/g, ''),
             bookingStatus: d['Booking Status'],
             customerId: d['Customer ID'].replace(/"/g, ''),
+
+            // Trip details
             vehicleType: d['Vehicle Type'],
             pickupLocation: d['Pickup Location'],
             dropLocation: d['Drop Location'],
+
+            // Timing metrics (PARSING AS FLOATS, HANDLING 'NULL' VALUES)
             avgVTAT: d['Avg VTAT'] === 'null' ? null : parseFloat(d['Avg VTAT']),
             avgCTAT: d['Avg CTAT'] === 'null' ? null : parseFloat(d['Avg CTAT']),
+
+            // Cancellation data (PARSE AS INTS!!!!!!)
             cancelledByCustomer: d['Cancelled Rides by Customer'] === 'null' ? null : parseInt(d['Cancelled Rides by Customer']),
             customerCancelReason: d['Reason for cancelling by Customer'],
             cancelledByDriver: d['Cancelled Rides by Driver'] === 'null' ? null : parseInt(d['Cancelled Rides by Driver']),
             driverCancelReason: d['Driver Cancellation Reason'],
+
+            // Incomplete rides data
             incompleteRides: d['Incomplete Rides'] === 'null' ? null : parseInt(d['Incomplete Rides']),
             incompleteReason: d['Incomplete Rides Reason'],
+
+            // Financial and trip metrics
             bookingValue: d['Booking Value'] === 'null' ? null : parseFloat(d['Booking Value']),
             rideDistance: d['Ride Distance'] === 'null' ? null : parseFloat(d['Ride Distance']),
+
+            // Rating information (driverRating = customer's rating of the driver, customerRating = driver's rating of the customer)
+            // this can get confusing so it's important to clarify!
             driverRating: d['Driver Ratings'] === 'null' ? null : parseFloat(d['Driver Ratings']),
             customerRating: d['Customer Rating'] === 'null' ? null : parseFloat(d['Customer Rating']),
+
+            // Payment info
             paymentMethod: d['Payment Method']
         }));
 
+        // This initializes all filteresd datasets with the complete dataset 
         filteredDataOverall = [...dashboardData];
         filteredDataVehicleType = [...dashboardData];
         filteredDataRevenue = [...dashboardData];
         filteredDataBookingStatus = [...dashboardData];
         
+        // Extracting all unique dates and sort them chronologically
+        // Referencing Stack Overflow to MAP AND SORT in one iteration in Java: https://stackoverflow.com/questions/2374756/map-and-sort-in-one-iteration-in-javascript
         allDates = [...new Set(dashboardData.map(d => d.date).filter(d => d))].sort();
         
+        // Sets up date filter dropdowns with min/max dates and displays initial dashboard xP
         populateDateDropdowns();
         updateDashboardOverall();
         
     }).catch(function(error) {
+        // Handles error handling during CSV loading
+        // Using this to output a message to the console: https://developer.mozilla.org/en-US/docs/Web/API/console/error_static
         console.error('Error loading CSV:', error);
         showError('Failed to load CSV data. Please ensure ncr_ride_bookings.csv is in the same directory as this HTML file.');
     });
 }
 
+// UI HELPER FUNCTIONS
+
+// Shows a loading indicator in the dashboard (csv file takes time to load because it has 148,000+ instances)
 function showLoading() {
     document.getElementById('total-bookings').innerHTML = '<div style="font-size: 18px;">Loading...</div>';
 }
 
+// Displays an error to the user if there are any
 function showError(message) {
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error';
@@ -85,6 +136,10 @@ function showError(message) {
     document.querySelector('.main-content').insertBefore(errorDiv, document.querySelector('.dashboard-section'));
 }
 
+// OVERVIEW SECTION (UPDATE)
+
+// Updates all visualizations in the 'Overview' section
+// FOUR TOTAL CHARTS: KPIs, Vehicle Type Bar Chart, Booking Status Pie Chart, and Time Series Line Chart
 function updateDashboardOverall() {
     updateKPIs(filteredDataOverall);
     updateVehicleTypeChart('vehicle-type-chart-overall', filteredDataOverall);
@@ -92,14 +147,23 @@ function updateDashboardOverall() {
     updateBookingsOverTimeChart(filteredDataOverall);
 }
 
+// KPI Calculations
+
+// Calculating and displaying the Key Performance Indicators (KPIS)
 function updateKPIs(data) {
+// Counts total # of bookings
     const totalBookings = data.length;
+    // Counts only COMPLETED rides
     const completedRides = data.filter(d => d.bookingStatus === 'Completed').length;
+    // Calculates average distance (excluding null values if present)
     const avgDistance = d3.mean(data.filter(d => d.rideDistance !== null), d => d.rideDistance) || 0;
+    // Calculates average driver rating (AGAIN: excluding null values)
     const avgRating = d3.mean(data.filter(d => d.driverRating !== null), d => d.driverRating) || 0;
+    // Calculating total revenue (NEED TO filter valid values first)
     const validRevenueData = data.filter(d => d.bookingValue !== null && !isNaN(d.bookingValue));
     const totalRevenue = d3.sum(validRevenueData, d => d.bookingValue) || 0;
 
+    // Updating the DOM elements with formatted values
     document.getElementById('total-bookings').textContent = totalBookings.toLocaleString();
     document.getElementById('completed-rides').textContent = completedRides.toLocaleString();
     document.getElementById('avg-distance').textContent = avgDistance.toFixed(1) + ' km';
@@ -107,18 +171,29 @@ function updateKPIs(data) {
     document.getElementById('total-revenue').textContent = '₹' + totalRevenue.toLocaleString();
 }
 
+// BOOKING STATUS PIE CHART
+// Creates an animated pie chart showing distribution of booking statuses
+
 function updateBookingStatusPieChart(data) {
+    // Referencing: https://observablehq.com/@d3/d3-group for d3.rollup
+    // Note: d3.rollup lets you "reduce" each group by computing a corresponding summary value (e.g., sum or count)
+
+    // Grouping data by booking status + count occurences
     const statusCounts = d3.rollup(data, v => v.length, d => d.bookingStatus);
     const total = data.length;
     
+    // Transforming grouped data into an array with percentages
     const chartData = Array.from(statusCounts, ([status, count]) => ({
         status,
         count,
         percentage: (count / total * 100).toFixed(1)
+        // REMOVE ANY STATUSES WITH 0 COUNT AND SORT BY COUNT DESCENDING
     })).filter(d => d.count > 0).sort((a, b) => b.count - a.count);
 
+    // Clear any existing charts
     d3.select('#booking-status-pie-chart').selectAll('*').remove();
 
+    // TOOLTIP ELEMENTS (creating + reusing)
     let tooltip = d3.select('body').select('.pie-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -136,9 +211,13 @@ function updateBookingStatusPieChart(data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+    // CHART DIMENSIONS
     const width = 240;
     const height = 240;
     const radius = Math.min(width, height) / 2 - 35;
+
+    // Creating a container with flexbox layout for chart and legend
+    // Using this to figure out how to use d3.select: https://d3js.org/d3-selection/selecting
 
     const container = d3.select('#booking-status-pie-chart')
         .append('div')
@@ -149,6 +228,7 @@ function updateBookingStatusPieChart(data) {
         .style('gap', '30px')
         .style('height', '100%');
 
+        // CREATING SVG ELEMENT FOR PIE CHART
     const svg = container
         .append('svg')
         .attr('width', width)
@@ -156,22 +236,27 @@ function updateBookingStatusPieChart(data) {
         .append('g')
         .attr('transform', `translate(${width / 2},${height / 2})`);
 
+        // Defining color scale for different statuses
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.status))
         .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
 
+        // Pie layout generator 
     const pie = d3.pie()
         .value(d => d.count)
         .sort(null);
 
+        // Arc generator for the pie slices
     const arc = d3.arc()
-        .innerRadius(0)
+        .innerRadius(0) // (FULL PIE - NOT DONUT)
         .outerRadius(radius);
 
+        // Arc generator for label positioning (outside pie)
     const outerArc = d3.arc()
         .innerRadius(radius * 1.05)
         .outerRadius(radius * 1.05);
 
+        // CREATE PIE SLICES
     const slices = svg.selectAll('path')
         .data(pie(chartData))
         .enter()
@@ -183,6 +268,7 @@ function updateBookingStatusPieChart(data) {
         .style('opacity', 0)
         .style('cursor', 'pointer')
         .on('mouseover', function(event, d) {
+            // ENLARGING SLICE SLIGHTLY
             d3.select(this)
                 .transition()
                 .duration(200)
@@ -192,6 +278,7 @@ function updateBookingStatusPieChart(data) {
                     return `translate(${x * 0.1}, ${y * 0.1})`;
                 });
             
+                // SHOW TOOLTIP WITH DETAILS
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>${d.data.status}</strong><br/>
@@ -201,36 +288,42 @@ function updateBookingStatusPieChart(data) {
                 .style('top', (event.pageY - 10) + 'px');
         })
         .on('mousemove', function(event) {
+            // Updating tooltip positionas mouse moves
             tooltip
                 .style('left', (event.pageX + 10) + 'px')
                 .style('top', (event.pageY - 10) + 'px');
         })
         .on('mouseout', function(event, d) {
+            // Returning slice to normal size (if not clicked)
             d3.select(this)
                 .transition()
                 .duration(200)
                 .style('opacity', 0.9)
                 .attr('transform', 'translate(0, 0)');
-            
+            // HIDE TOOLTIP!
             tooltip.style('opacity', 0);
         });
 
+        // Animating slices appearing with a growing effect 
     slices.transition()
         .duration(800)
         .delay((d, i) => i * 100)
         .style('opacity', 0.9)
         .attrTween('d', function(d) {
+            // Referencing: https://d3js.org/d3-interpolate
             const interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
             return function(t) {
                 return arc(interpolate(t));
             };
         });
 
+        // Polylines connecting slices to percentage labels
     const polylines = svg.selectAll('polyline')
         .data(pie(chartData))
         .enter()
         .append('polyline')
         .attr('points', function(d) {
+            // NEED TO: CALCULATE SLICE CENTER, ARC EDGE, LABEL POSITION
             const pos = outerArc.centroid(d);
             pos[0] = radius * 1.08 * (midAngle(d) < Math.PI ? 1 : -1);
             return [arc.centroid(d), outerArc.centroid(d), pos];
@@ -240,11 +333,13 @@ function updateBookingStatusPieChart(data) {
         .style('stroke-width', '1.5px')
         .style('opacity', 0);
 
+        // Animating polylines appearing after slices
     polylines.transition()
         .duration(800)
         .delay((d, i) => i * 100 + 800)
         .style('opacity', 0.7);
 
+// Creating percentage labels 
     const labels = svg.selectAll('text')
         .data(pie(chartData))
         .enter()
@@ -255,6 +350,7 @@ function updateBookingStatusPieChart(data) {
             return `translate(${pos})`;
         })
         .style('text-anchor', function(d) {
+            // Anchoring text based on which side of chart it's on 
             return midAngle(d) < Math.PI ? 'start' : 'end';
         })
         .style('font-size', '10px')
@@ -263,11 +359,13 @@ function updateBookingStatusPieChart(data) {
         .style('opacity', 0)
         .text(d => `${d.data.percentage}%`);
 
+        // ANimating labels appearing
     labels.transition()
         .duration(800)
         .delay((d, i) => i * 100 + 800)
         .style('opacity', 1);
 
+        // Legend to go next to pie chart!!
     const legend = container
         .append('div')
         .style('display', 'flex')
@@ -275,12 +373,14 @@ function updateBookingStatusPieChart(data) {
         .style('gap', '8px')
         .style('padding', '10px');
 
+        // ADDING LEGEND ITEMS
     chartData.forEach(d => {
         const legendItem = legend.append('div')
             .style('display', 'flex')
             .style('align-items', 'center')
             .style('gap', '8px')
             .style('cursor', 'pointer')
+            // Highlighting corresponding slice on hover
             .on('mouseover', function() {
                 svg.selectAll('path')
                     .filter(slice => slice.data.status === d.status)
@@ -301,6 +401,7 @@ function updateBookingStatusPieChart(data) {
                     .attr('transform', 'translate(0, 0)');
             });
 
+            // Color box indicator
         legendItem.append('div')
             .style('width', '14px')
             .style('height', '14px')
@@ -308,25 +409,32 @@ function updateBookingStatusPieChart(data) {
             .style('border-radius', '2px')
             .style('flex-shrink', '0');
 
+            // Label text
         legendItem.append('span')
             .style('font-size', '8px')
             .style('color', '#333')
             .style('white-space', 'nowrap')
             .text(`${d.status} (${d.percentage}%)`);
     });
-
+    // Calculates middle angle of a pie slice
     function midAngle(d) {
         return d.startAngle + (d.endAngle - d.startAngle) / 2;
     }
 }
 
+
+// VEHICLE TYPE BAR CHART
+// Creates an animated bar chart showing bookings by vehicle type
 function updateVehicleTypeChart(containerId, data) {
+    // Grouping data by vehicle type and count and then sorting descending by count
     const vehicleTypeCounts = d3.rollup(data, v => v.length, d => d.vehicleType);
     const chartData = Array.from(vehicleTypeCounts, ([vehicleType, count]) => ({ vehicleType, count }))
         .sort((a, b) => b.count - a.count);
 
+        // Clear existing chart 0.0
     d3.select(`#${containerId}`).selectAll('*').remove();
 
+    // CREATING/REUSING TOOLTIP (see explanation above!!)
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -344,11 +452,13 @@ function updateVehicleTypeChart(containerId, data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+    // Chart dimensions
     const container = document.getElementById(containerId);
     const margin = { top: 20, right: 30, bottom: 100, left: 90 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = 300 - margin.top - margin.bottom;
 
+    // Creating SVG!
     const svg = d3.select(`#${containerId}`)
         .append('svg')
         .attr('width', container.clientWidth)
@@ -356,32 +466,39 @@ function updateVehicleTypeChart(containerId, data) {
         .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
+        // Create X scale (band scale for categories)
     const x = d3.scaleBand()
         .domain(chartData.map(d => d.vehicleType))
         .range([0, width])
-        .padding(0.3);
+        .padding(0.3); // space between bars (looks messy if it's directly next to eachother)
 
+        // Create Y scale (linear scale for counts)
     const y = d3.scaleLinear()
         .domain([0, d3.max(chartData, d => d.count)])
         .nice()
-        .range([height, 0]);
+        .range([height, 0]); // inverted (0 at bottom)
 
+        // COLOR SCALE!!!!(uber brand colors)
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.vehicleType))
         .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
 
+        // Creating the actual bars
     const bars = svg.selectAll('.bar')
         .data(chartData)
         .enter()
         .append('rect')
         .attr('class', 'bar')
         .attr('x', d => x(d.vehicleType))
+        // Starting at bottom, start with height 0
         .attr('y', height)
         .attr('width', x.bandwidth())
         .attr('height', 0)
         .attr('fill', d => color(d.vehicleType))
         .attr('opacity', 0)
         .style('cursor', 'pointer')
+
+        // HOVER EFFECTS (trying to make our dashboard interactive however we can)
         .on('mouseover', function(event, d) {
             d3.select(this)
                 .transition()
@@ -408,14 +525,16 @@ function updateVehicleTypeChart(containerId, data) {
             tooltip.style('opacity', 0);
         });
 
+        // Animating bars growing from bottom to top
     bars.transition()
         .duration(800)
-        .delay((d, i) => i * 100)
+        .delay((d, i) => i * 100) // stagger animation
         .ease(d3.easeCubicOut)
         .attr('y', d => y(d.count))
         .attr('height', d => height - y(d.count))
         .attr('opacity', 0.8);
 
+        // Add X axis with rotated labels
     svg.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(d3.axisBottom(x))
@@ -425,12 +544,14 @@ function updateVehicleTypeChart(containerId, data) {
         .style('font-size', '12px')
         .style('fill', '#333');
 
+        // Add Y axis
     svg.append('g')
         .call(d3.axisLeft(y))
         .selectAll('text')
         .style('font-size', '12px')
         .style('fill', '#333');
 
+        // Add x axis label
     svg.append('text')
         .attr('x', width / 2)
         .attr('y', height + margin.bottom - 10)
@@ -439,7 +560,7 @@ function updateVehicleTypeChart(containerId, data) {
         .style('font-weight', 'bold')
         .style('fill', '#333')
         .text('Vehicle Type');
-
+// Add Y axis label too
     svg.append('text')
         .attr('transform', 'rotate(-90)')
         .attr('x', -height / 2)
@@ -450,13 +571,19 @@ function updateVehicleTypeChart(containerId, data) {
         .style('fill', '#333')
         .text('Number of Bookings');
 }
+// =====================================================================
+// DATE FILTER SET UP (IMPORTANT AS IT AFFECTS OUR WHOLE DASHBOARD)
+// =====================================================================
 
+// Note: populates date input fields with min/max dates from the dataset
 function populateDateDropdowns() {
     const sections = ['overall', 'vehicle-type-page', 'revenue', 'booking-status'];
     
+    // Earliest date + latest date
     const minDate = allDates[0];
     const maxDate = allDates[allDates.length - 1];
     
+    // Setting min/max attributes for ALL date inputs
     sections.forEach(section => {
         const startInput = document.getElementById(`start-date-${section}`);
         const endInput = document.getElementById(`end-date-${section}`);
@@ -470,21 +597,29 @@ function populateDateDropdowns() {
     });
 }
 
+// DATE FILTERING
+// Note: filters data based on selected date range for a specific section
 function applyDateFilter(section) {
     const startDate = document.getElementById(`start-date-${section}`).value;
     const endDate = document.getElementById(`end-date-${section}`).value;
     
     let filteredData;
+    // Handles different combinations of start/end dates
     if (!startDate && !endDate) {
+        // No filters = show all data
         filteredData = [...dashboardData];
     } else if (startDate && !endDate) {
+        // ONLY START DATE - SHOW FROM START DATE ONWARDS
         filteredData = dashboardData.filter(d => d.date >= startDate);
     } else if (!startDate && endDate) {
+        // ONLY END DATE = SHOW UP TO END DATE
         filteredData = dashboardData.filter(d => d.date <= endDate);
     } else {
+        // Both dates --> SHOW RANGE
         filteredData = dashboardData.filter(d => d.date >= startDate && d.date <= endDate);
     }
     
+    // This updates the appropriate section's data and refrseh visualizations for Overall, Vehicle Type, Revenue, and Booking Status
     if (section === 'overall') {
         filteredDataOverall = filteredData;
         updateDashboardOverall();
@@ -498,7 +633,8 @@ function applyDateFilter(section) {
         filteredDataBookingStatus = filteredData;
         updateBookingStatusCharts();
     }
-    
+
+    // Update filter into display
     const filterInfo = document.getElementById(`filter-info-${section}`);
     if (filterInfo) {
         if (!startDate && !endDate) {
@@ -513,14 +649,15 @@ function applyDateFilter(section) {
     }
 }
 
+// Resets date filters and shows all date fro a section
 function resetDateFilter(section) {
     const startInput = document.getElementById(`start-date-${section}`);
     const endInput = document.getElementById(`end-date-${section}`);
     const filterInfo = document.getElementById(`filter-info-${section}`);
-    
+    // Clears input values
     if (startInput) startInput.value = '';
     if (endInput) endInput.value = '';
-    
+    // Resets data to full dataset and update visualizations
     if (section === 'overall') {
         filteredDataOverall = [...dashboardData];
         updateDashboardOverall();
@@ -535,20 +672,26 @@ function resetDateFilter(section) {
         updateBookingStatusCharts();
     }
     
+    // Updates filter info!! (showing all data tagline)
     if (filterInfo) {
         filterInfo.textContent = 'Showing all data';
     }
 }
 
+// VEHICLE TYPE METRIC ANALYSIS CHART
+// Creates a bar chart showing different metrics by vehicle type
 function updateVehicleTypeMetricChart() {
     const metric = document.getElementById('vehicle-metric-select').value;
+    // Get selected metric from dropdown
     const data = filteredDataVehicleType;
     
+    // NORMALIZE VEHICLE TYPES (COMBINING EBIKE + BIKE INTO ONE CATEGORY)
     const normalizedData = data.map(d => ({
         ...d,
         vehicleType: (d.vehicleType === 'eBike' || d.vehicleType === 'Bike') ? 'eBike/Bike' : d.vehicleType
     }));
     
+    // Get unique vehicle types + calculate the selected metric for each vehicle type
     const vehicleTypes = [...new Set(normalizedData.map(d => d.vehicleType))];
     const chartData = [];
     
@@ -559,23 +702,28 @@ function updateVehicleTypeMetricChart() {
         
         switch(metric) {
             case 'totalBookingValue':
+                // SUM OF ALL BOOKING VALUES
                 value = d3.sum(vehicleData.filter(d => d.bookingValue !== null), d => d.bookingValue);
                 label = 'Total Booking Value in Rupees (₹)';
                 break;
             case 'successBookingValue':
+                // SUM OF BOOKING VALUES FOR COMPLETED RIDES ONLY
                 const successData = vehicleData.filter(d => d.bookingStatus === 'Completed' && d.bookingValue !== null);
                 value = d3.sum(successData, d => d.bookingValue);
                 label = 'Success Booking Value in Rupees (₹)';
                 break;
             case 'avgDistance':
+                // AVERAGE DISTANCE TRAVELLED IN KM
                 value = d3.mean(vehicleData.filter(d => d.rideDistance !== null), d => d.rideDistance) || 0;
                 label = 'Avg Distance Travelled (km)';
                 break;
             case 'totalDistance':
+                // TOTAL DISTANCE TRAVELLED IN KM
                 value = d3.sum(vehicleData.filter(d => d.rideDistance !== null), d => d.rideDistance);
                 label = 'Total Distance Travelled (km)';
                 break;
             case 'avgDriverRating':
+                // AVERAGE DRIVER + CUSTOMER RATING)
                 value = d3.mean(vehicleData.filter(d => d.driverRating !== null), d => d.driverRating) || 0;
                 label = 'Avg Driver Rating (Stars)';
                 break;
@@ -588,19 +736,27 @@ function updateVehicleTypeMetricChart() {
         chartData.push({ vehicleType, value, label });
     });
     
+    // Defining custom sort order from most to least prmium...
     const sortOrder = ['Go Mini', 'Go Sedan', 'Auto', 'eBike/Bike', 'UberXL', 'Premier Sedan'];
     
+    // Sorting chart data according to CUSTOM ORDER
     chartData.sort((a, b) => {
         const indexA = sortOrder.indexOf(a.vehicleType);
         const indexB = sortOrder.indexOf(b.vehicleType);
+        // If both not in sort order, keep equal
         if (indexA === -1 && indexB === -1) return 0;
+        // If only A not in order, put it at the end
         if (indexA === -1) return 1;
+        // If only B not in order, put it at end
         if (indexB === -1) return -1;
+        // OTHERWISE --> sort by position in sortOrder array
         return indexA - indexB;
     });
     
+    // Always have to clear any existing charts
     d3.select('#vehicle-type-metric-chart').selectAll('*').remove();
     
+    // CREATE/REUSE TOOLTIP FOR HOVER INTERACTIONS
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -618,11 +774,13 @@ function updateVehicleTypeMetricChart() {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
     
+    // Setting up chart dimensions with margins for axes and labels
     const container = document.getElementById('vehicle-type-metric-chart');
     const margin = { top: 20, right: 30, bottom: 100, left: 90 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
     
+    // Create SVG container for chart
     const svg = d3.select('#vehicle-type-metric-chart')
         .append('svg')
         .attr('width', container.clientWidth)
@@ -630,20 +788,25 @@ function updateVehicleTypeMetricChart() {
         .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
     
+        // X SCALE (band scale for categorical vehicle types)     
+        // https://d3js.org/d3-scale#scaleBand
+
     const x = d3.scaleBand()
         .domain(chartData.map(d => d.vehicleType))
         .range([0, width])
         .padding(0.3);
-    
+    // Y SCALE (linear scale for metric values)
     const y = d3.scaleLinear()
         .domain([0, d3.max(chartData, d => d.value)])
         .nice()
         .range([height, 0]);
     
+        // Defining color scale for diff vehicle types
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.vehicleType))
         .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
     
+        // CREATING BARS FOR BAR CHART
     const bars = svg.selectAll('.bar')
         .data(chartData)
         .enter()
@@ -661,12 +824,13 @@ function updateVehicleTypeMetricChart() {
                 .transition()
                 .duration(200)
                 .attr('opacity', 1);
-            
+            // FORMAT DISPLAY VALUE BASED ON METRIC TYPE
             const displayValue = metric.includes('Rating') ? d.value.toFixed(2) : 
                                  metric.includes('avg') && metric.includes('Distance') ? d.value.toFixed(2) + ' km' :
                                  metric.includes('Distance') ? d.value.toFixed(2) + ' km' :
                                  '₹' + d.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
+                                 // SHOW TOOLTIP WITH FORMATTED VALUE
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>${d.vehicleType}</strong><br/>${d.label}: ${displayValue}`)
@@ -679,14 +843,18 @@ function updateVehicleTypeMetricChart() {
                 .style('top', (event.pageY - 10) + 'px');
         })
         .on('mouseout', function() {
+            // Return bar to normal opacity
             d3.select(this)
                 .transition()
                 .duration(200)
                 .attr('opacity', 0.8);
             
+                // Hide tooltip 0.0
             tooltip.style('opacity', 0);
         });
     
+    // Animate bars growing from bottom to top
+    // Referencing: https://d3js.org/d3-transition
     bars.transition()
         .duration(800)
         .delay((d, i) => i * 100)
@@ -695,6 +863,8 @@ function updateVehicleTypeMetricChart() {
         .attr('height', d => height - y(d.value))
         .attr('opacity', 0.8);
     
+    // Add X axis with rotated labels for better readability
+    // Referencing: https://d3js.org/d3-axis#axisBottom
     svg.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(d3.axisBottom(x))
@@ -704,6 +874,8 @@ function updateVehicleTypeMetricChart() {
         .style('font-size', '12px')
         .style('fill', '#333');
     
+    // Add Y axis
+    // Referencing: https://d3js.org/d3-axis#axisLeft
     svg.append('g')
         .call(d3.axisLeft(y))
         .selectAll('text')
@@ -730,6 +902,11 @@ function updateVehicleTypeMetricChart() {
         .text(chartData[0].label);
 }
 
+// BOOKINGS OVER TIME LINE CHART
+// Creating an animated area _ line chart that shows booking trends over time
+// D3 Time Scales: https://d3js.org/d3-scale#scaleTime
+// D3 Line & Area Shapes: https://d3js.org/d3-shape#lines
+// D3 Time Format: https://d3js.org/d3-time-format
 function updateBookingsOverTimeChart(data) {
     const bookingsByDate = d3.rollup(data, v => v.length, d => d.date);
     const chartData = Array.from(bookingsByDate, ([date, count]) => ({ date, count }))
@@ -737,6 +914,7 @@ function updateBookingsOverTimeChart(data) {
     
     d3.select('#bookings-over-time-chart').selectAll('*').remove();
     
+    // HANDLING EMPTY DATA CASE
     if (chartData.length === 0) {
         d3.select('#bookings-over-time-chart')
             .append('div')
@@ -747,6 +925,7 @@ function updateBookingsOverTimeChart(data) {
         return;
     }
     
+    // CREATING/REUSING TOOLTIP
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -764,11 +943,13 @@ function updateBookingsOverTimeChart(data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
     
+    // Chart dimensions
     const container = document.getElementById('bookings-over-time-chart');
     const margin = { top: 20, right: 30, bottom: 80, left: 70 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
     
+    // SVG CONTAINER!!
     const svg = d3.select('#bookings-over-time-chart')
         .append('svg')
         .attr('width', container.clientWidth)
@@ -776,6 +957,7 @@ function updateBookingsOverTimeChart(data) {
         .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
     
+        // To create X scale (time scale for dates ) --> referenced     // d3.extent() - finds min/max: https://d3js.org/d3-array#extent
     const x = d3.scaleTime()
         .domain(d3.extent(chartData, d => new Date(d.date)))
         .range([0, width]);
@@ -785,16 +967,19 @@ function updateBookingsOverTimeChart(data) {
         .nice()
         .range([height, 0]);
     
+        // Adding grid lines for better readability
     svg.append('g')
         .attr('class', 'grid')
         .style('stroke', '#e0e0e0')
         .style('stroke-opacity', 0.5)
         .style('shape-rendering', 'crispEdges')
         .call(d3.axisLeft(y)
-            .tickSize(-width)
-            .tickFormat('')
+            .tickSize(-width) // Extending ticks across chart width
+            .tickFormat('') // Hiding tick labels (only show on main axis)
         );
     
+        // Create gradient for area fill
+        // SVG gradients: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/linearGradient
     const gradient = svg.append('defs')
         .append('linearGradient')
         .attr('id', 'area-gradient')
@@ -803,6 +988,7 @@ function updateBookingsOverTimeChart(data) {
         .attr('x2', '0%')
         .attr('y2', '100%');
     
+        // GRADIENT COLOR STOPS (FADE FROM BLUE TO TRANSPARENT)
     gradient.append('stop')
         .attr('offset', '0%')
         .attr('stop-color', '#276EF1')
@@ -813,12 +999,14 @@ function updateBookingsOverTimeChart(data) {
         .attr('stop-color', '#276EF1')
         .attr('stop-opacity', 0);
     
+        // AREA GENERATOR!!!!!!!!
     const area = d3.area()
         .x(d => x(new Date(d.date)))
-        .y0(height)
-        .y1(d => y(d.count))
+        .y0(height) // Bottom of area (baseline)
+        .y1(d => y(d.count)) // Top of area (date point)
         .curve(d3.curveMonotoneX);
     
+        // Draw the area with gradient fill and fade-in animation
     svg.append('path')
         .datum(chartData)
         .attr('class', 'area')
@@ -829,6 +1017,9 @@ function updateBookingsOverTimeChart(data) {
         .duration(1000)
         .style('opacity', 1);
     
+        // LINE GENERATOR 
+        // d3.line() - creates line path: https://d3js.org/d3-shape#line
+
     const line = d3.line()
         .x(d => x(new Date(d.date)))
         .y(d => y(d.count))
@@ -842,6 +1033,8 @@ function updateBookingsOverTimeChart(data) {
         .attr('stroke-width', 3)
         .attr('d', line);
     
+    // Animate line drawing from left to right using stroke-dasharray technique
+    // Referencing: https://jakearchibald.com/2013/animated-line-drawing-svg/
     const totalLength = path.node().getTotalLength();
     path
         .attr('stroke-dasharray', totalLength + ' ' + totalLength)
@@ -851,6 +1044,7 @@ function updateBookingsOverTimeChart(data) {
         .ease(d3.easeLinear)
         .attr('stroke-dashoffset', 0);
     
+     // Create data point dots along the line
     const dots = svg.selectAll('.dot')
         .data(chartData)
         .enter()
@@ -869,6 +1063,7 @@ function updateBookingsOverTimeChart(data) {
                 .duration(200)
                 .attr('r', 7);
             
+                // Show tooltip with date and count
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>Date: ${d.date}</strong><br/>Bookings: ${d.count.toLocaleString()}`)
@@ -889,6 +1084,7 @@ function updateBookingsOverTimeChart(data) {
             tooltip.style('opacity', 0);
         });
     
+    // Animate dots appearing after line finishes drawing
     dots.transition()
         .duration(800)
         .delay((d, i) => i * 20 + 1500)
@@ -905,12 +1101,13 @@ function updateBookingsOverTimeChart(data) {
         .style('font-size', '11px')
         .style('fill', '#333');
     
+    // Y AXIS
     svg.append('g')
         .call(d3.axisLeft(y))
         .selectAll('text')
         .style('font-size', '12px')
         .style('fill', '#333');
-    
+    // X AXIS
     svg.append('text')
         .attr('x', width / 2)
         .attr('y', height + margin.bottom - 10)
@@ -920,6 +1117,7 @@ function updateBookingsOverTimeChart(data) {
         .style('fill', '#333')
         .text('Date');
     
+        // Y AXIS LABEL :d (no space for x-axis label...)
     svg.append('text')
         .attr('transform', 'rotate(-90)')
         .attr('x', -height / 2)
