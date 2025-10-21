@@ -1129,32 +1129,45 @@ function updateBookingsOverTimeChart(data) {
         .text('Number of Bookings');
 }
 
-// REVENUE PAGE
+// REVENUE SECTION
+// Updates all revenue-related charts based on filtered data
 function updateRevenueCharts() {
-    updatePaymentMethodsChart(filteredDataRevenue);
-    updatePricePerKmChart(filteredDataRevenue);
-    updateRevenueLocationHeatmap(filteredDataRevenue);
+    updatePaymentMethodsChart(filteredDataRevenue); // Payment Methods Donut Chart
+    updatePricePerKmChart(filteredDataRevenue); //Price per KM Bar Chart
+    updateRevenueLocationHeatmap(filteredDataRevenue); //Heatmap Showing Revenue by Pickup/Drop Location Pairs
 }
 
+// PAYMENT METHODS DONUT CHART
+// Creates an interactive donut chart visualizing the distribution of payment methods
+// Displays: Cash, UPI, Credit Card, Debit Card, etc.
 function updatePaymentMethodsChart(data) {
     // Remove null, 'null', or blank payment methods that equivalate to "INCOMPLETE"
     const validData = data.filter(d => 
-        d.paymentMethod &&
-        d.paymentMethod.trim() !== '' &&
-        d.paymentMethod.trim().toLowerCase() !== 'null'
+        d.paymentMethod &&                 //Must exist
+        d.paymentMethod.trim() !== '' &&   //Not empty string
+        d.paymentMethod.trim().toLowerCase() !== 'null'   //Not 'null' string
     );
 
+    // Group data by payment method and count occurrences
+    // d3.rollup creates a Map: payment method -> count
     const paymentCounts = d3.rollup(validData, v => v.length, d => d.paymentMethod);
+    // Calculate total for percentage calculations
     const total = Array.from(paymentCounts.values()).reduce((a, b) => a + b, 0);
     
+    // Transform Map into array of objects with method, count, and percentage
+    // Sort by count in descending order (most popular payment methods first)
     const chartData = Array.from(paymentCounts, ([method, count]) => ({
         method,
         count,
         percentage: (count / total * 100).toFixed(1)
     })).sort((a, b) => b.count - a.count);
 
+
+    // Remove any previous chart elements to prevent duplicates
     d3.select('#payment-methods-chart').selectAll('*').remove();
 
+
+    // Display user-friendly message if no valid payment data exists
     if (chartData.length === 0) {
         d3.select('#payment-methods-chart')
             .append('div')
@@ -1165,6 +1178,7 @@ function updatePaymentMethodsChart(data) {
         return;
     }
 
+    // CREATE/REUSE TOOLTIP FOR HOVER INTERACTIONS
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -1177,55 +1191,74 @@ function updatePaymentMethodsChart(data) {
             .style('padding', '12px 16px')
             .style('border-radius', '8px')
             .style('font-size', '14px')
-            .style('pointer-events', 'none')
-            .style('z-index', '1000')
+            .style('pointer-events', 'none') //prevents tooltip from interfering with mouse events
+            .style('z-index', '1000')   //ensures tooltip appears above other elements
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+
+    //chart dimensions
     const width = 300;
     const height = 300;
-    const radius = Math.min(width, height) / 2 - 30;
+    const radius = Math.min(width, height) / 2 - 30; // Subtracting margin for better fit
 
+
+    //Create SVG container
+    // Arrange donut chart and legend vertically centered
     const container = d3.select('#payment-methods-chart')
         .append('div')
-        .style('display', 'flex')
-        .style('flex-direction', 'column')
-        .style('align-items', 'center')
-        .style('justify-content', 'flex-start')
-        .style('gap', '40px')
+        .style('display', 'flex')          
+        .style('flex-direction', 'column')     //Stack vertically 
+        .style('align-items', 'center')        //center vertically
+        .style('justify-content', 'flex-start')  //align to top
+        .style('gap', '40px')    //space between chart and legend
         .style('height', '100%')
         .style('padding', '20px');
 
+
+    //Create SVG  element for donut chart
     const svg = container
         .append('svg')
         .attr('width', width)
         .attr('height', height)
-        .append('g')
-        .attr('transform', `translate(${width / 2},${height / 2})`);
+        .append('g')   //Group element for transforming to center
+        .attr('transform', `translate(${width / 2},${height / 2})`); //cneter the chart
 
+    
+    // Define color scale for different payment methods
+    // Use Uber brand colors for consistency
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.method))
         .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
 
+
+    // Generate pie slices
+    //Referencing: https://d3js.org/d3-shape#pies
     const pie = d3.pie()
-        .value(d => d.count)
-        .sort(null);
+        .value(d => d.count)  //use count to determine slice size
+        .sort(null); //Don't sort slices, keep original order
 
+    // Define arc generator for donut slices
+    // Referencing: https://d3js.org/d3-shape#arc
     const arc = d3.arc()
-        .innerRadius(radius * 0.6)
-        .outerRadius(radius);
+        .innerRadius(radius * 0.6)  // Inner radius for donut hole
+        .outerRadius(radius); // Outer radius for slice size
 
+    // Create slices
     const slices = svg.selectAll('path')
-        .data(pie(chartData))
+        .data(pie(chartData)) //pie() transforms data into pie slice angles
         .enter()
         .append('path')
-        .attr('d', arc)
+        .attr('d', arc) //arc() generates the path data for each slice
         .attr('fill', d => color(d.data.method))
         .attr('stroke', 'white')
         .style('stroke-width', '3px')
         .style('opacity', 0)
-        .style('cursor', 'pointer')
+        .style('cursor', 'pointer')  //Shows slices are interactive
+
+        // Hover interactions for slices
         .on('mouseover', function(event, d) {
+            //Enlarge and highlight slice on hover
             d3.select(this)
                 .transition()
                 .duration(200)
@@ -1235,6 +1268,7 @@ function updatePaymentMethodsChart(data) {
                     return `translate(${x * 0.15}, ${y * 0.15})`;
                 });
             
+            // Show tooltip with payment method details
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>${d.data.method}</strong><br/>
@@ -1244,39 +1278,52 @@ function updatePaymentMethodsChart(data) {
                 .style('top', (event.pageY - 10) + 'px');
         })
         .on('mousemove', function(event) {
+            //Update tooltip position as mouse moves
             tooltip
                 .style('left', (event.pageX + 10) + 'px')
                 .style('top', (event.pageY - 10) + 'px');
         })
         .on('mouseout', function() {
+            //Return slice to normal size and opacity when mouse leaves
             d3.select(this)
                 .transition()
                 .duration(200)
                 .style('opacity', 0.9)
-                .attr('transform', 'translate(0, 0)');
+                .attr('transform', 'translate(0, 0)'); //Reset position
             
+            //Hide tooltip
             tooltip.style('opacity', 0);
         });
 
+
+
+    // Animate slices appearing with a growing effect
+    // Growing animation from 0 to final angle
+    // Referencing: https://d3js.org/d3-transition
     slices.transition()
         .duration(800)
-        .delay((d, i) => i * 100)
+        .delay((d, i) => i * 100)  //Stagger animation for each slice
         .style('opacity', 0.9)
         .attrTween('d', function(d) {
+            // Custom tween for smooth growing animation
+            // Interpolates from startAngle=0, endAngle=0 to final angles
+            // Referencing: https://d3js.org/d3-interpolate
             const interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
             return function(t) {
-                return arc(interpolate(t));
+                return arc(interpolate(t)); // t goes from 0 to 1
             };
         });
 
+    //Center text showing total payments in the donut hole
     svg.append('text')
         .attr('text-anchor', 'middle')
-        .attr('dy', '-0.2em')
+        .attr('dy', '-0.2em') //Adjust vertical position
         .style('font-size', '24px')
         .style('font-weight', 'bold')
         .style('fill', '#333')
-        .text(total.toLocaleString());
+        .text(total.toLocaleString()); //Format with thousands separators
     
+    // Center label describing the metric
     svg.append('text')
         .attr('text-anchor', 'middle')
         .attr('dy', '1.2em')
@@ -1284,16 +1331,19 @@ function updatePaymentMethodsChart(data) {
         .style('fill', '#666')
         .text('Total Payments');
 
+    //Legand displays payment methods with color boxes and percentages
     const legend = container
         .append('div')
         .style('display', 'flex')
-        .style('flex-direction', 'row')
-        .style('flex-wrap', 'wrap')
+        .style('flex-direction', 'row')  //Horizontal layout
+        .style('flex-wrap', 'wrap')         //Wrap to multiple lines if needed
         .style('justify-content', 'left')
         .style('gap', '12px')
         .style('max-width', '400px')
         .style('padding', '10px');
 
+
+    //Add legend items for each payment method
     chartData.forEach(d => {
         const legendItem = legend.append('div')
             .style('display', 'flex')
@@ -1301,7 +1351,10 @@ function updatePaymentMethodsChart(data) {
             .style('gap', '8px')
             .style('min-width', '120px')
             .style('cursor', 'pointer')
+
+            //legend hover effects to highlight corresponding slice
             .on('mouseover', function() {
+                //Highlight corresponding slice on hover
                 svg.selectAll('path')
                     .filter(slice => slice.data.method === d.method)
                     .transition()
@@ -1313,6 +1366,7 @@ function updatePaymentMethodsChart(data) {
                     });
             })
             .on('mouseout', function() {
+                //Return slice to normal state when mouse leaves legend item
                 svg.selectAll('path')
                     .filter(slice => slice.data.method === d.method)
                     .transition()
@@ -1320,7 +1374,7 @@ function updatePaymentMethodsChart(data) {
                     .style('opacity', 0.9)
                     .attr('transform', 'translate(0, 0)');
             });
-
+        // Color box for payment method
         legendItem.append('div')
             .style('width', '16px')
             .style('height', '16px')
@@ -1328,6 +1382,7 @@ function updatePaymentMethodsChart(data) {
             .style('border-radius', '3px')
             .style('flex-shrink', '0');
 
+        // Text label with method name and percentage
         legendItem.append('span')
             .style('font-size', '13px')
             .style('color', '#333')
@@ -1336,18 +1391,25 @@ function updatePaymentMethodsChart(data) {
 }
 
 
+// PRICE PER KILOMETER HISTOGRAM
+// Creates a histogram showing the distribution of price per kilometer
+// Helps identify pricing patterns and outliers
+// Also displays mean price as a reference line
 function updatePricePerKmChart(data) {
+    // Filter out records with null or zero ride distance to avoid division errors
     const validData = data.filter(d => 
-        d.bookingValue !== null && 
-        d.rideDistance !== null && 
-        d.rideDistance > 0 &&
-        d.bookingValue > 0
+        d.bookingValue !== null &&   //booking value must exist
+        d.rideDistance !== null &&  //ride distance must exist
+        d.rideDistance > 0 &&   //ride distance must be greater than 0
+        d.bookingValue > 0  //booking value must be greater than 0
     ).map(d => ({
-        pricePerKm: d.bookingValue / d.rideDistance
+        pricePerKm: d.bookingValue / d.rideDistance // Calculate price per km
     }));
 
+    // Clear any existing chart elements
     d3.select('#price-per-km-chart').selectAll('*').remove();
 
+    // Handle case with no valid data
     if (validData.length === 0) {
         d3.select('#price-per-km-chart')
             .append('div')
@@ -1358,9 +1420,11 @@ function updatePricePerKmChart(data) {
         return;
     }
 
+    // Extract pricePerKm values for histogram and mean calculation
     const pricePerKmValues = validData.map(d => d.pricePerKm);
     const mean = d3.mean(pricePerKmValues);
 
+    // CREATE/REUSE TOOLTIP FOR HOVER INTERACTIONS
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -1378,11 +1442,13 @@ function updatePricePerKmChart(data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+    // Chart dimensions
     const container = document.getElementById('price-per-km-chart');
     const margin = { top: 20, right: 100, bottom: 60, left: 70 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = 350 - margin.top - margin.bottom;
 
+    // Create SVG container
     const svg = d3.select('#price-per-km-chart')
         .append('svg')
         .attr('width', container.clientWidth)
@@ -1390,39 +1456,52 @@ function updatePricePerKmChart(data) {
         .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
+    // ========== X SCALE (PRICE PER KM) ==========
+    // Using 95th percentile as max to exclude extreme outliers
+    // Referencing: https://d3js.org/d3-array#quantile
     const x = d3.scaleLinear()
         .domain([0, d3.quantile(pricePerKmValues.sort(d3.ascending), 0.95)])
         .range([0, width]);
 
+    // ========== HISTOGRAM GENERATOR ==========
+    // Creates bins/buckets for grouping data
+    // Referencing: https://d3js.org/d3-array#bin
     const histogram = d3.histogram()
-        .domain(x.domain())
-        .thresholds(x.ticks(30));
+        .domain(x.domain())  // Same domain as x scale
+        .thresholds(x.ticks(30)); // Create approximately 30 bins
 
     const bins = histogram(pricePerKmValues);
+    // bins is an array where each element contains:
+    // { x0: bin start, x1: bin end, length: count, [...actual values] }
 
+
+    // ========== Y SCALE (Frequency) ==========
     const y = d3.scaleLinear()
-        .domain([0, d3.max(bins, d => d.length)])
+        .domain([0, d3.max(bins, d => d.length)])  //0 to max bin count
         .nice()
         .range([height, 0]);
 
+    // ========== CREATING BARS ==========
     const bars = svg.selectAll('rect')
         .data(bins)
         .enter()
         .append('rect')
-        .attr('x', d => x(d.x0) + 1)
-        .attr('width', d => Math.max(0, x(d.x1) - x(d.x0) - 1))
-        .attr('y', height)
-        .attr('height', 0)
-        .attr('fill', '#3D7FF5')
+        .attr('x', d => x(d.x0) + 1)  // +1 for small gap between bars
+        .attr('width', d => Math.max(0, x(d.x1) - x(d.x0) - 1)) // -1 for gap
+        .attr('y', height)   // Start at bottom
+        .attr('height', 0)     // Start with 0 height for animation
+        .attr('fill', '#3D7FF5')   // Blue color
         .attr('stroke', 'white')
         .attr('stroke-width', 1)
         .style('cursor', 'pointer')
+        // ========== HOVER INTERACTIONS ==========
         .on('mouseover', function(event, d) {
             d3.select(this)
                 .transition()
                 .duration(200)
-                .attr('fill', '#60a5fa');
-            
+                .attr('fill', '#60a5fa'); // Lighter blue on hover
+
+            // Show tooltip with bin range and frequency
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>Range: ₹${d.x0.toFixed(2)} - ₹${d.x1.toFixed(2)}</strong><br/>
@@ -1444,12 +1523,15 @@ function updatePricePerKmChart(data) {
             tooltip.style('opacity', 0);
         });
 
+    // Animate bars growing from bottom to top
     bars.transition()
         .duration(800)
-        .delay((d, i) => i * 20)
+        .delay((d, i) => i * 20)  // Staggered delay for animation
         .attr('y', d => y(d.length))
         .attr('height', d => height - y(d.length));
-
+ 
+    // Mean Line
+    //Vertical dashed line indicating mean price per km
     svg.append('line')
         .attr('x1', x(mean))
         .attr('x2', x(mean))
@@ -1457,13 +1539,14 @@ function updatePricePerKmChart(data) {
         .attr('y2', height)
         .attr('stroke', '#F26138')
         .attr('stroke-width', 2)
-        .attr('stroke-dasharray', '5,5')
-        .style('opacity', 0)
+        .attr('stroke-dasharray', '5,5') // Dashed line
+        .style('opacity', 0)  //Start invisible
         .transition()
         .duration(1000)
-        .delay(800)
+        .delay(800)    // Fade in
         .style('opacity', 0.8);
 
+    // Mean Label
     svg.append('text')
         .attr('x', x(mean) + 5)
         .attr('y', 15)
@@ -1476,7 +1559,7 @@ function updatePricePerKmChart(data) {
         .duration(1000)
         .delay(800)
         .style('opacity', 1);
-
+    // X and Y Axes
     svg.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(d3.axisBottom(x))
@@ -1489,7 +1572,7 @@ function updatePricePerKmChart(data) {
         .selectAll('text')
         .style('font-size', '11px')
         .style('fill', '#333');
-
+    // Axis Labels
     svg.append('text')
         .attr('x', width / 2)
         .attr('y', height + margin.bottom - 10)
@@ -1510,16 +1593,26 @@ function updatePricePerKmChart(data) {
         .text('Frequency');
 }
 
+
+// REVENUE LOCATION HEATMAP
+// Creates a heatmap showing revenue for different pickup-dropoff location pairs
+// Uses color intensity to represent revenue amounts
+// Displays top 10 pickup locations × top 10 drop locations
 function updateRevenueLocationHeatmap(data) {
+    // ----- Data Validation -----
+    // Filter out records with missing pickup/drop locations or invalid booking values
     const validData = data.filter(d => 
-        d.pickupLocation && 
-        d.dropLocation && 
-        d.bookingValue !== null && 
-        d.bookingValue > 0
+        d.pickupLocation &&    // Must have pickup location
+        d.dropLocation &&       // Must have drop location
+        d.bookingValue !== null &&   // booking value must exist
+        d.bookingValue > 0      // booking value must be greater than 0
     );
 
+
+    // Clear any existing chart elements
     d3.select('#revenue-location-heatmap').selectAll('*').remove();
 
+    //handle case with no valid data
     if (validData.length === 0) {
         d3.select('#revenue-location-heatmap')
             .append('div')
@@ -1530,16 +1623,22 @@ function updateRevenueLocationHeatmap(data) {
         return;
     }
 
+    // ========== MULTI-LEVEL DATA AGGREGATION ==========
+    // Create nested Map: pickup -> drop -> {revenue, count}
+    // d3.rollup with multiple keys creates hierarchical grouping
+    // Referencing: https://d3js.org/d3-array#rollup
     const routeRevenue = d3.rollup(
         validData,
         v => ({
-            revenue: d3.sum(v, d => d.bookingValue),
-            count: v.length
+            revenue: d3.sum(v, d => d.bookingValue),  // Total revenue for this route
+            count: v.length  // Number of trips for this route
         }),
-        d => d.pickupLocation,
-        d => d.dropLocation
+        d => d.pickupLocation, // First level: pickup location
+        d => d.dropLocation  // Second level: drop location
     );
 
+    // ========== CALCULATE TOTALS BY LOCATION ==========
+    // Sum revenue for each pickup location (across all drop locations)
     const pickupRevenue = new Map();
     const dropRevenue = new Map();
 
@@ -1548,21 +1647,26 @@ function updateRevenueLocationHeatmap(data) {
         drops.forEach(data => { total += data.revenue; });
         pickupRevenue.set(pickup, total);
     });
-
+    // Sum revenue for each drop location (across all pickup locations)
     validData.forEach(d => {
         dropRevenue.set(d.dropLocation, (dropRevenue.get(d.dropLocation) || 0) + d.bookingValue);
     });
 
+    // ========== SELECT TOP 10 LOCATIONS ==========
+    // Only show top locations to keep heatmap readable
     const top10Pickups = Array.from(pickupRevenue.entries())
-        .sort((a, b) => b[1] - a[1])
+        .sort((a, b) => b[1] - a[1]) // Sort by revenue descending
         .slice(0, 10)
-        .map(d => d[0]);
+        .map(d => d[0]);  // Extract location names
+
 
     const top10Drops = Array.from(dropRevenue.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(d => d[0]);
 
+    // ========== PREPARE HEATMAP DATA ==========
+    // Create array of all pickup-drop combinations from top 10 lists
     const heatmapData = [];
     top10Pickups.forEach(pickup => {
         top10Drops.forEach(drop => {
@@ -1578,6 +1682,7 @@ function updateRevenueLocationHeatmap(data) {
         });
     });
 
+     // ========== CREATE/REUSE TOOLTIP ==========
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -1595,12 +1700,14 @@ function updateRevenueLocationHeatmap(data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+    // ========== CHART DIMENSIONS ==========
     const container = document.getElementById('revenue-location-heatmap');
-    const margin = { top: 20, right: 120, bottom: 150, left: 150 };
+    const margin = { top: 20, right: 120, bottom: 150, left: 150 }; // Large margins for labels
     const cellSize = 35;
     const width = cellSize * top10Drops.length;
     const height = cellSize * top10Pickups.length;
 
+    // ========== CREATE SVG ==========
     const svg = d3.select('#revenue-location-heatmap')
         .append('svg')
         .attr('width', width + margin.left + margin.right)
@@ -1608,27 +1715,35 @@ function updateRevenueLocationHeatmap(data) {
         .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
+    // ========== COLOR SCALE ==========
+    // Sequential color scale: light blue (low revenue) to dark blue (high revenue)
+    // Referencing: https://d3js.org/d3-scale-chromatic
     const colorScale = d3.scaleSequential()
         .domain([0, d3.max(heatmapData, d => d.revenue)])
         .interpolator(d3.interpolateBlues);
 
+    // ========== CREATE HEATMAP CELLS ==========
     const cells = svg.selectAll('rect')
         .data(heatmapData)
         .enter()
         .append('rect')
-        .attr('x', d => top10Drops.indexOf(d.drop) * cellSize)
-        .attr('y', d => top10Pickups.indexOf(d.pickup) * cellSize)
+        .attr('x', d => top10Drops.indexOf(d.drop) * cellSize)   // Position based on drop location
+        .attr('y', d => top10Pickups.indexOf(d.pickup) * cellSize) // Position based on pickup location
         .attr('width', cellSize)
         .attr('height', cellSize)
-        .attr('fill', 'white')
-        .attr('stroke', '#ddd')
+        .attr('fill', 'white')   // Start with white for animation
+        .attr('stroke', '#ddd') // Light gray border
         .attr('stroke-width', 1)
         .style('cursor', 'pointer')
+
+        // ========== HOVER INTERACTIONS ==========
         .on('mouseover', function(event, d) {
+            // Highlight cell border on hover
             d3.select(this)
                 .attr('stroke', '#000')
                 .attr('stroke-width', 2);
             
+            // Show detailed tooltip with route info
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>${d.pickup} → ${d.drop}</strong><br/>
@@ -1650,12 +1765,14 @@ function updateRevenueLocationHeatmap(data) {
             
             tooltip.style('opacity', 0);
         });
-
+    // Animate cells filling with color based on revenue
+    // Cells transition from white to color scale
     cells.transition()
         .duration(600)
-        .delay((d, i) => i * 10)
+        .delay((d, i) => i * 10)  // Very quick staggered delay
         .attr('fill', d => colorScale(d.revenue));
 
+    // ========== X AXES LABELS (Drop Location) ==========
     svg.selectAll('.x-label')
         .data(top10Drops)
         .enter()
@@ -1668,19 +1785,21 @@ function updateRevenueLocationHeatmap(data) {
         .style('font-size', '10px')
         .style('fill', '#333')
         .text(d => d.length > 15 ? d.substring(0, 15) + '...' : d);
-
+    // ========== Y AXES LABELS (Pickup Location) ==========
     svg.selectAll('.y-label')
         .data(top10Pickups)
         .enter()
         .append('text')
         .attr('class', 'y-label')
         .attr('x', -5)
-        .attr('y', (d, i) => i * cellSize + cellSize / 2 + 4)
-        .attr('text-anchor', 'end')
+        .attr('y', (d, i) => i * cellSize + cellSize / 2 + 4) // +4 for vertical centering
+        .attr('text-anchor', 'end') // Align to right
         .style('font-size', '10px')
         .style('fill', '#333')
-        .text(d => d.length > 20 ? d.substring(0, 20) + '...' : d);
+        .text(d => d.length > 20 ? d.substring(0, 20) + '...' : d); // Truncate long names
 
+    // Axis Titles
+    // X Axis Title
     svg.append('text')
         .attr('x', width / 2)
         .attr('y', height + margin.bottom - 10)
@@ -1689,7 +1808,7 @@ function updateRevenueLocationHeatmap(data) {
         .style('font-weight', 'bold')
         .style('fill', '#333')
         .text('Drop Location');
-
+    // Y Axis Title 
     svg.append('text')
         .attr('transform', 'rotate(-90)')
         .attr('x', -height / 2)
@@ -1700,17 +1819,23 @@ function updateRevenueLocationHeatmap(data) {
         .style('fill', '#333')
         .text('Pickup Location');
 
+    // ========== COLOR LEGEND ==========
+    // Create a vertical legend indicating revenue scale
     const legendWidth = 20;
     const legendHeight = height;
     const legendSteps = 10;
 
+    //Scale for legend
     const legendScale = d3.scaleLinear()
         .domain([0, legendSteps])
-        .range([legendHeight, 0]);
+        .range([legendHeight, 0]);  // Top to bottom
 
+    // Legend group
     const legend = svg.append('g')
         .attr('transform', `translate(${width + 20}, 0)`);
 
+    // Create colored rectangles for legend
+    // Each rectangle represents a step in revenue scale
     for (let i = 0; i <= legendSteps; i++) {
         const value = (i / legendSteps) * d3.max(heatmapData, d => d.revenue);
         legend.append('rect')
@@ -1720,7 +1845,8 @@ function updateRevenueLocationHeatmap(data) {
             .attr('height', legendHeight / legendSteps)
             .attr('fill', colorScale(value));
     }
-
+    // Legend axis
+    // Maximum and minimum revenue labels
     legend.append('text')
         .attr('x', legendWidth + 5)
         .attr('y', 0)
@@ -1734,7 +1860,7 @@ function updateRevenueLocationHeatmap(data) {
         .style('font-size', '10px')
         .style('fill', '#333')
         .text('₹0');
-
+    // Legend title
     legend.append('text')
         .attr('x', legendWidth / 2)
         .attr('y', -10)
@@ -1746,24 +1872,36 @@ function updateRevenueLocationHeatmap(data) {
 }
 
 
-// BOOKING STATUS PAGE
+
+// BOOKING STATUS PAGE - MAIN UPDATE FUNCTION
+// Coordinates updates for all six booking status visualizations
+// This page analyzes ride completion rates, cancellations, and demand patterns
 
 function updateBookingStatusCharts() {
-    updateOverallRideDistribution(filteredDataBookingStatus);
-    updateDriverCancellationChart(filteredDataBookingStatus);
-    updateCustomerCancellationChart(filteredDataBookingStatus);
-    updateMonthlySuccessRateChart();
-    updateHourlyDemandChart(filteredDataBookingStatus);
-    updateIncompleteRideChart(filteredDataBookingStatus);
+    updateOverallRideDistribution(filteredDataBookingStatus); // Bar chart of all booking statuses
+    updateDriverCancellationChart(filteredDataBookingStatus); // Pie chart of driver cancellations
+    updateCustomerCancellationChart(filteredDataBookingStatus); // Pie chart of customer cancellations
+    updateMonthlySuccessRateChart();      // Line chart of monthly ride success rates
+    updateHourlyDemandChart(filteredDataBookingStatus); // Combo chart of rides by hour and day
+    //updateIncompleteRideChart(filteredDataBookingStatus); //Bar chart of incomplete rides by reason
 }
 
+// OVERALL RIDE DISTRIBUTION BAR CHART
+// Shows distribution of all booking statuses: Completed, Cancelled, No Driver Found, etc.
+// Uses color coding to distinguish between different statuses
 function updateOverallRideDistribution(data) {
+    // ========== DATA AGGREGATION ==========
+    // Group data by booking status and count occurrences
     const statusCounts = d3.rollup(data, v => v.length, d => d.bookingStatus);
+
+    // Transform Map to array of objects for D3
     const chartData = Array.from(statusCounts, ([status, count]) => ({ status, count }))
         .sort((a, b) => b.count - a.count);
 
+    // Clear existing chart elements
     d3.select('#overall-ride-distribution-chart').selectAll('*').remove();
 
+    // Handle case with no data
     if (chartData.length === 0) {
         d3.select('#overall-ride-distribution-chart')
             .append('div')
@@ -1774,6 +1912,7 @@ function updateOverallRideDistribution(data) {
         return;
     }
 
+    // ========== CREATE/REUSE TOOLTIP ==========
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -1791,12 +1930,15 @@ function updateOverallRideDistribution(data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+    // ========== CHART DIMENSIONS ==========
     const container = document.getElementById('overall-ride-distribution-chart');
     const containerWidth = container.clientWidth;
     const margin = { top: 20, right: 20, bottom: 80, left: 60 };
     const width = containerWidth - margin.left - margin.right;
     const height = 280 - margin.top - margin.bottom;
 
+    // ========== CREATE SVG ==========
+    // X scale: booking statuses
     const svg = d3.select('#overall-ride-distribution-chart')
         .append('svg')
         .attr('width', containerWidth)
@@ -1809,15 +1951,18 @@ function updateOverallRideDistribution(data) {
         .range([0, width])
         .padding(0.3);
 
+    // Y scale: counts
     const y = d3.scaleLinear()
         .domain([0, d3.max(chartData, d => d.count)])
         .nice()
         .range([height, 0]);
 
+    // Color scale for different statuses
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.status))
         .range(['#5BC589', '#F26138', '#FFC043', '#9A644C', '#3D7FF5', '#7956BF']);
-
+    
+        // ========== CREATE BARS ==========
     const bars = svg.selectAll('.bar')
         .data(chartData)
         .enter()
@@ -1826,10 +1971,12 @@ function updateOverallRideDistribution(data) {
         .attr('x', d => x(d.status))
         .attr('y', height)
         .attr('width', x.bandwidth())
-        .attr('height', 0)
-        .attr('fill', d => color(d.status))
+        .attr('height', 0)   // Start at bottom
+        .attr('fill', d => color(d.status))   
         .attr('opacity', 0)
         .style('cursor', 'pointer')
+
+        // ========== HOVER INTERACTIONS ==========
         .on('mouseover', function(event, d) {
             d3.select(this)
                 .transition()
@@ -1856,6 +2003,7 @@ function updateOverallRideDistribution(data) {
             tooltip.style('opacity', 0);
         });
 
+    // Animate bars growing from bottom to top
     bars.transition()
         .duration(800)
         .delay((d, i) => i * 100)
@@ -1864,6 +2012,7 @@ function updateOverallRideDistribution(data) {
         .attr('height', d => height - y(d.count))
         .attr('opacity', 0.8);
 
+    // X and Y Axes
     svg.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(d3.axisBottom(x))
@@ -1878,7 +2027,8 @@ function updateOverallRideDistribution(data) {
         .selectAll('text')
         .style('font-size', '9px')
         .style('fill', '#333');
-
+    
+        // Axis Labels
     svg.append('text')
         .attr('x', width / 2)
         .attr('y', height + margin.bottom + 40)
@@ -1899,7 +2049,13 @@ function updateOverallRideDistribution(data) {
         .text('Count');
 }
 
+
+// DRIVER CANCELLATION REASONS PIE CHART
+// Displays breakdown of why drivers cancel rides
+// Helps identify systemic issues with driver-side cancellations
 function updateDriverCancellationChart(data) {
+    // ========== DATA FILTERING ==========
+    // Filter to only include valid driver cancellation records
     const cancelledData = data.filter(d => 
         d.cancelledByDriver && 
         d.driverCancelReason && 
@@ -1907,17 +2063,20 @@ function updateDriverCancellationChart(data) {
         d.driverCancelReason.toLowerCase() !== 'null'
     );
 
+   // ========== DATA AGGREGATION ==========
     const reasonCounts = d3.rollup(cancelledData, v => v.length, d => d.driverCancelReason);
     const total = Array.from(reasonCounts.values()).reduce((a, b) => a + b, 0);
-    
+     
+    // Transform to array with percentages
     const chartData = Array.from(reasonCounts, ([reason, count]) => ({
         reason,
         count,
         percentage: (count / total * 100).toFixed(1)
     })).sort((a, b) => b.count - a.count);
 
+    // Clear existing chart elements
     d3.select('#driver-cancellation-chart').selectAll('*').remove();
-
+    // Handle case with no data
     if (chartData.length === 0) {
         d3.select('#driver-cancellation-chart')
             .append('div')
@@ -1927,7 +2086,7 @@ function updateDriverCancellationChart(data) {
             .text('No driver cancellation data available');
         return;
     }
-
+    // ========== CREATE/REUSE TOOLTIP ==========
     let tooltip = d3.select('body').select('.pie-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -1945,12 +2104,14 @@ function updateDriverCancellationChart(data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+    // ========== CHART DIMENSIONS ==========
     const container = document.getElementById('driver-cancellation-chart');
     const containerWidth = container.clientWidth;
     const width = Math.min(containerWidth, 280);
     const height = 200;
     const radius = Math.min(width, height) / 2 - 20;
 
+    // ========== CREATE SVG ==========
     const mainContainer = d3.select('#driver-cancellation-chart')
         .append('div')
         .style('display', 'flex')
@@ -1960,25 +2121,27 @@ function updateDriverCancellationChart(data) {
         .style('gap', '10px')
         .style('padding-top', '10px');
 
+    // Create SVG for pie chart
     const svg = mainContainer
         .append('svg')
         .attr('width', width)
         .attr('height', height)
         .append('g')
         .attr('transform', `translate(${width / 2},${height / 2})`);
-
+    // ========== COLOR SCALE ==========
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.reason))
         .range(['#6366f1', '#8b5cf6', '#a855f7', '#c084fc', '#d8b4fe', '#e9d5ff']);
 
+    // ========== CREATE PIE SLICES ==========
     const pie = d3.pie()
         .value(d => d.count)
         .sort(null);
-
+    //  ========= ARC GENERATOR ==========
     const arc = d3.arc()
         .innerRadius(0)
         .outerRadius(radius);
-
+    // Create pie slices
     const slices = svg.selectAll('path')
         .data(pie(chartData))
         .enter()
@@ -1989,6 +2152,7 @@ function updateDriverCancellationChart(data) {
         .style('stroke-width', '2px')
         .style('opacity', 0)
         .style('cursor', 'pointer')
+        // ========== HOVER INTERACTIONS ==========
         .on('mouseover', function(event, d) {
             d3.select(this)
                 .transition()
@@ -2021,7 +2185,7 @@ function updateDriverCancellationChart(data) {
             
             tooltip.style('opacity', 0);
         });
-
+    // Animate pie slices growing from 0 to full size
     slices.transition()
         .duration(800)
         .delay((d, i) => i * 100)
@@ -2032,7 +2196,7 @@ function updateDriverCancellationChart(data) {
                 return arc(interpolate(t));
             };
         });
-
+     // ========== LEGEND CREATION ==========
     const legend = mainContainer
         .append('div')
         .style('display', 'flex')
@@ -2041,12 +2205,14 @@ function updateDriverCancellationChart(data) {
         .style('max-width', '100%')
         .style('padding', '5px');
 
+    // Create legend items
     chartData.forEach(d => {
         const legendItem = legend.append('div')
             .style('display', 'flex')
             .style('align-items', 'center')
             .style('gap', '8px')
             .style('cursor', 'pointer')
+            // ========== LEGEND HOVER INTERACTIONS ==========
             .on('mouseover', function() {
                 svg.selectAll('path')
                     .filter(slice => slice.data.reason === d.reason)
@@ -2066,14 +2232,14 @@ function updateDriverCancellationChart(data) {
                     .style('opacity', 0.9)
                     .attr('transform', 'translate(0, 0)');
             });
-
+        // Legend color box
         legendItem.append('div')
             .style('width', '12px')
             .style('height', '12px')
             .style('background-color', color(d.reason))
             .style('border-radius', '2px')
             .style('flex-shrink', '0');
-
+        // Legend text
         legendItem.append('span')
             .style('font-size', '10px')
             .style('color', '#333')
@@ -2082,7 +2248,13 @@ function updateDriverCancellationChart(data) {
     });
 }
 
+
+// CUSTOMER CANCELLATION REASONS PIE CHART
+// Displays breakdown of why customers cancel rides
+// Similar structure to driver cancellation chart but with different color scheme
 function updateCustomerCancellationChart(data) {
+    // ========== DATA FILTERING ==========
+    // Filter to only include valid customer cancellation records
     const cancelledData = data.filter(d => 
         d.cancelledByCustomer && 
         d.customerCancelReason && 
@@ -2090,6 +2262,7 @@ function updateCustomerCancellationChart(data) {
         d.customerCancelReason.toLowerCase() !== 'null'
     );
 
+    // ========== DATA AGGREGATION ==========
     const reasonCounts = d3.rollup(cancelledData, v => v.length, d => d.customerCancelReason);
     const total = Array.from(reasonCounts.values()).reduce((a, b) => a + b, 0);
     
@@ -2099,8 +2272,10 @@ function updateCustomerCancellationChart(data) {
         percentage: (count / total * 100).toFixed(1)
     })).sort((a, b) => b.count - a.count);
 
+    // ========== CLEAR EXISTING CHART ==========
     d3.select('#customer-cancellation-chart').selectAll('*').remove();
 
+    // ========== HANDLE EMPTY DATA CASE ==========
     if (chartData.length === 0) {
         d3.select('#customer-cancellation-chart')
             .append('div')
@@ -2110,7 +2285,7 @@ function updateCustomerCancellationChart(data) {
             .text('No customer cancellation data available');
         return;
     }
-
+    // ========== CREATE/REUSE TOOLTIP ==========
     let tooltip = d3.select('body').select('.pie-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -2128,12 +2303,14 @@ function updateCustomerCancellationChart(data) {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+    // ========== CHART DIMENSIONS ==========
     const container = document.getElementById('customer-cancellation-chart');
     const containerWidth = container.clientWidth;
     const width = Math.min(containerWidth, 280);
     const height = 200;
     const radius = Math.min(width, height) / 2 - 20;
 
+    // ========== CREATE MAIN CONTAINER ==========
     const mainContainer = d3.select('#customer-cancellation-chart')
         .append('div')
         .style('display', 'flex')
@@ -2142,7 +2319,7 @@ function updateCustomerCancellationChart(data) {
         .style('justify-content', 'flex-start')
         .style('gap', '10px')
         .style('padding-top', '10px');
-
+    // ========== CREATE SVG ==========
     const svg = mainContainer
         .append('svg')
         .attr('width', width)
@@ -2150,18 +2327,20 @@ function updateCustomerCancellationChart(data) {
         .append('g')
         .attr('transform', `translate(${width / 2},${height / 2})`);
 
+    // ========== COLOR SCALE ==========
     const color = d3.scaleOrdinal()
         .domain(chartData.map(d => d.reason))
         .range(['#ec4899', '#f43f5e', '#fb923c', '#fbbf24', '#a3a3a3', '#9ca3af']);
 
+    // ========== PIE LAYOUT GENERATOR ==========
     const pie = d3.pie()
         .value(d => d.count)
         .sort(null);
-
+    // ========== ARC GENERATOR ==========
     const arc = d3.arc()
         .innerRadius(0)
         .outerRadius(radius);
-
+    // ========== CREATE PIE SLICES ==========
     const slices = svg.selectAll('path')
         .data(pie(chartData))
         .enter()
@@ -2172,6 +2351,7 @@ function updateCustomerCancellationChart(data) {
         .style('stroke-width', '2px')
         .style('opacity', 0)
         .style('cursor', 'pointer')
+        // ========== HOVER INTERACTIONS ==========
         .on('mouseover', function(event, d) {
             d3.select(this)
                 .transition()
@@ -2181,7 +2361,7 @@ function updateCustomerCancellationChart(data) {
                     const [x, y] = arc.centroid(d);
                     return `translate(${x * 0.1}, ${y * 0.1})`;
                 });
-            
+            // Show detailed
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>${d.data.reason}</strong><br/>
@@ -2204,7 +2384,7 @@ function updateCustomerCancellationChart(data) {
             
             tooltip.style('opacity', 0);
         });
-
+    // Animate pie slices growing from 0 to full size
     slices.transition()
         .duration(800)
         .delay((d, i) => i * 100)
@@ -2215,7 +2395,7 @@ function updateCustomerCancellationChart(data) {
                 return arc(interpolate(t));
             };
         });
-
+    // ========== LEGEND CREATION ==========
     const legend = mainContainer
         .append('div')
         .style('display', 'flex')
@@ -2223,13 +2403,14 @@ function updateCustomerCancellationChart(data) {
         .style('gap', '5px')
         .style('max-width', '100%')
         .style('padding', '5px');
-
+    // Add legend items
     chartData.forEach(d => {
         const legendItem = legend.append('div')
             .style('display', 'flex')
             .style('align-items', 'center')
             .style('gap', '8px')
             .style('cursor', 'pointer')
+            // ========== LEGEND HOVER INTERACTIONS ==========
             .on('mouseover', function() {
                 svg.selectAll('path')
                     .filter(slice => slice.data.reason === d.reason)
@@ -2249,14 +2430,14 @@ function updateCustomerCancellationChart(data) {
                     .style('opacity', 0.9)
                     .attr('transform', 'translate(0, 0)');
             });
-
+        // Legend color box
         legendItem.append('div')
             .style('width', '12px')
             .style('height', '12px')
             .style('background-color', color(d.reason))
             .style('border-radius', '2px')
             .style('flex-shrink', '0');
-
+        // Legend text
         legendItem.append('span')
             .style('font-size', '10px')
             .style('color', '#333')
@@ -2265,10 +2446,18 @@ function updateCustomerCancellationChart(data) {
     });
 }
 
+// MONTHLY SUCCESS RATE LINE CHART
+// Displays ride completion success rate trends over time by month
+// Uses the full dashboardData (not filtered) to show complete trend
+// Success rate = (completed rides / total bookings) × 100%
 function updateMonthlySuccessRateChart() {
-
+    // ========== DATA AGGREGATION ==========
+    // Important: Uses complete dashboard data, not filtered data
+    // This shows overall platform performance trends regardless of filters
     const data = dashboardData;
 
+    // ========== MONTHLY AGGREGATION ==========
+    // Group data by month (YYYY-MM format) and calculate success metrics
     const monthlyData = d3.rollup(
         data,
         v => ({
@@ -2278,15 +2467,17 @@ function updateMonthlySuccessRateChart() {
         d => d.date.substring(0, 7)  // obtain "YYYY-MM" as month key
     );
 
+    // ========== CALCULATE SUCCESS RATE ==========
+    // Transform Map to array with success rate calculation
     const chartData = Array.from(monthlyData, ([month, counts]) => ({
         month: month,
         successRate: counts.total > 0 ? (counts.completed / counts.total * 100) : 0,  
         total: counts.total,
         completed: counts.completed
     })).sort((a, b) => a.month.localeCompare(b.month));  
-
+    // ========== CLEAR EXISTING CHART ==========
     d3.select('#monthly-success-rate-chart').selectAll('*').remove();
-
+    // ========== HANDLE EMPTY DATA CASE ==========
     if (chartData.length === 0) {
         d3.select('#monthly-success-rate-chart')
             .append('div')
@@ -2296,7 +2487,7 @@ function updateMonthlySuccessRateChart() {
             .text('No data available for selected date range');
         return;
     }
-
+    // ========== CREATE/REUSE TOOLTIP ==========
     let tooltip = d3.select('body').select('.chart-tooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body')
@@ -2314,27 +2505,30 @@ function updateMonthlySuccessRateChart() {
             .style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
     }
 
+    // ========== CHART DIMENSIONS ==========
     const container = document.getElementById('monthly-success-rate-chart');
     const margin = { top: 20, right: 20, bottom: 60, left: 70 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = 300 - margin.top - margin.bottom;
     
+    // ========== CREATE SVG ==========
     const svg = d3.select('#monthly-success-rate-chart')
         .append('svg')
         .attr('width', container.clientWidth)
         .attr('height', 300)
         .append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
-
+    // ========== SCALES ==========
     const x = d3.scaleTime()
         .domain(d3.extent(chartData, d => new Date(d.month + '-01')))  
         .range([0, width]);
 
+    // Y scale fixed between 61% and 63% for better visualization of small changes
     const y = d3.scaleLinear()
         .domain([61, 63])  
         .nice()
         .range([height, 0]);
-
+    // ========== ADD GRIDLINES ==========
     svg.append('g')
         .attr('class', 'grid')
         .style('stroke', '#e0e0e0')
@@ -2344,7 +2538,7 @@ function updateMonthlySuccessRateChart() {
             .tickSize(-width)
             .tickFormat('')
         );
-    
+    // ========== AREA UNDER LINE WITH GRADIENT ==========
     const gradient = svg.append('defs')
         .append('linearGradient')
         .attr('id', 'success-rate-gradient')
@@ -2352,24 +2546,27 @@ function updateMonthlySuccessRateChart() {
         .attr('y1', '0%')
         .attr('x2', '0%')
         .attr('y2', '100%');
-    
+    // Define gradient stops
     gradient.append('stop')
         .attr('offset', '0%')
         .attr('stop-color', '#5BC589')
         .attr('stop-opacity', 0.4);
-    
+    //  Fade to transparent
     gradient.append('stop')
         .attr('offset', '100%')
         .attr('stop-color', '#5BC589')
         .attr('stop-opacity', 0);
 
-
+    // Area generator
+    // Create filled area under the success rate line
     const area = d3.area()
         .x(d => x(new Date(d.month + '-01')))
-        .y0(height)
-        .y1(d => y(d.successRate));
+        .y0(height)       //Bottom of area
+        .y1(d => y(d.successRate)); // Top of area
         //.curve(d3.curveMonotoneX);  
+        // Note: not using .curve() here for straight lines between points
     
+    // Draw area with gradient fill
     svg.append('path')
         .datum(chartData)
         .attr('class', 'area')
@@ -2379,12 +2576,14 @@ function updateMonthlySuccessRateChart() {
         .transition()
         .duration(1000)
         .style('opacity', 1);
-
+    
+    // Line Generator
+    //Create the line path on top of the area
     const line = d3.line()
         .x(d => x(new Date(d.month + '-01')))
         .y(d => y(d.successRate));
         //.curve(d3.curveMonotoneX);
-    
+    // Draw line
     const path = svg.append('path')
         .datum(chartData)
         .attr('class', 'line')
@@ -2393,16 +2592,19 @@ function updateMonthlySuccessRateChart() {
         .attr('stroke-width', 3)
         .attr('d', line);
 
-
+    // ========== ANIMATE LINE DRAWING ==========
+    // Uses stroke-dasharray technique to create drawing animation
+    // Referencing: https://jakearchibald.com/2013/animated-line-drawing-svg/
     const totalLength = path.node().getTotalLength();
     path
-        .attr('stroke-dasharray', totalLength + ' ' + totalLength)
-        .attr('stroke-dashoffset', totalLength)
+        .attr('stroke-dasharray', totalLength + ' ' + totalLength)  // Gap same as length
+        .attr('stroke-dashoffset', totalLength)    // Start fully offset (invisible)
         .transition()
         .duration(1500)
         .ease(d3.easeLinear)
-        .attr('stroke-dashoffset', 0);
+        .attr('stroke-dashoffset', 0);  // Animate to 0 offset (fully visible)
 
+    // ========== ADD DATA POINT DOTS ==========
      const dots = svg.selectAll('.dot')
         .data(chartData)
         .enter()
@@ -2410,18 +2612,19 @@ function updateMonthlySuccessRateChart() {
         .attr('class', 'dot')
         .attr('cx', d => x(new Date(d.month + '-01')))
         .attr('cy', d => y(d.successRate))
-        .attr('r', 0)
+        .attr('r', 0)    // Start with radius 0
         .attr('fill', '#5BC589')
         .attr('stroke', 'white')
         .attr('stroke-width', 2)
         .style('cursor', 'pointer')
+        // ========== HOVER INTERACTIONS ==========
         .on('mouseover', function(event, d) {
             d3.select(this)
                 .transition()
                 .duration(200)
                 .attr('r', 7);
             
-    
+    // Show detailed tooltip
     tooltip
         .style('opacity', 1)
         .html(`<strong>${d.month}</strong><br/>
@@ -2437,6 +2640,7 @@ function updateMonthlySuccessRateChart() {
                 .style('top', (event.pageY - 10) + 'px');
         })
         .on('mouseout', function() {
+            // Restore dot size
             d3.select(this)
                 .transition()
                 .duration(200)
@@ -2446,7 +2650,8 @@ function updateMonthlySuccessRateChart() {
         });
 
 
-    
+    // Animate dots appearing
+    // Dots appear after line is drawn
     dots.transition()
         .duration(800)
         .delay((d, i) => i * 50 + 1500)  
@@ -2456,7 +2661,7 @@ function updateMonthlySuccessRateChart() {
     svg.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(d3.axisBottom(x)
-            .ticks(chartData.length)
+            .ticks(chartData.length)  // One tick per data point
             .tickFormat(d3.timeFormat('%Y-%m')))  // format as "YYYY-MM"
         .selectAll('text')
         .attr('transform', 'rotate(-45)')
@@ -2468,12 +2673,13 @@ function updateMonthlySuccessRateChart() {
     svg.append('g')
         .call(d3.axisLeft(y)
             .ticks(5)
-            .tickFormat(d => d + '%'))  // add %
+            .tickFormat(d => d + '%'))  // add % sign
         .selectAll('text')
         .style('font-size', '10px')
         .style('fill', '#333');
 
-
+    // Axis Labels
+    // X Label
     svg.append('text')
         .attr('x', width / 2)
         .attr('y', height + margin.bottom - 5)
@@ -2483,7 +2689,7 @@ function updateMonthlySuccessRateChart() {
         .style('fill', '#333')
         .text('Month');
     
-
+    // Y Label
     svg.append('text')
         .attr('transform', 'rotate(-90)')
         .attr('x', -height / 2)
@@ -2498,19 +2704,22 @@ function updateMonthlySuccessRateChart() {
 
 
 
-
-// HOURLY DEMAND VS SUCCESS RATE
+// HOURLY DEMAND VS SUCCESS RATE CHART
+// Dual-axis combination chart showing:
+// - Bar chart: hourly booking demand (left Y axis)
+// - Line chart: hourly success rate (right Y axis)
+// Helps identify peak hours and their corresponding success rates
 function updateHourlyDemandChart(data) {
     // ========== Data processing ==========
     // d3 rollup by hour
     const hourlyData = d3.rollup(
         data,
         v => ({
-            total: v.length,
+            total: v.length,   // Total bookings in this hour
             completed: v.filter(d => d.bookingStatus === 'Completed').length
         }),
         d => {
-            
+            // Extract hour from time string (format: "HH:MM:SS")
             const hour = parseInt(d.time.split(':')[0]);
             return hour;
         }
@@ -2524,17 +2733,20 @@ function updateHourlyDemandChart(data) {
     })).sort((a, b) => a.hour - b.hour);
     
     // ensure all 24 hours are represented
+    // Fill in missing hours with zero values for complete visualization
     const completeData = [];
     for (let h = 0; h < 24; h++) {
         const existing = chartData.find(d => d.hour === h);
         completeData.push(existing || { hour: h, demand: 0, successRate: 0 });
     }
     
+    // Logging for debugging
     console.log('Hourly Data:', completeData);
     
     // ========== Clean container ==========
     d3.select('#hourly-demand-chart').selectAll('*').remove();
     
+    // Handle case with no data
     if (data.length === 0) {
         d3.select('#hourly-demand-chart')
             .append('div')
@@ -2565,7 +2777,7 @@ function updateHourlyDemandChart(data) {
     
     // ========== Set size and margin ==========
     const container = document.getElementById('hourly-demand-chart');
-    const margin = { top: 10, right: 60, bottom: 60, left: 60 };  
+    const margin = { top: 10, right: 60, bottom: 60, left: 60 };   // Right margin for second Y axis
     const width = container.clientWidth - margin.left - margin.right;
     const height = 280 - margin.top - margin.bottom;
     
@@ -2613,9 +2825,9 @@ function updateHourlyDemandChart(data) {
         .append('rect')
         .attr('class', 'bar')
         .attr('x', d => x(d.hour))
-        .attr('y', height)
-        .attr('width', x.bandwidth())
-        .attr('height', 0)
+        .attr('y', height)                 // Start at bottom
+        .attr('width', x.bandwidth())    
+        .attr('height', 0)               // Start with height 0                 
         .attr('fill', '#3D7FF5')
         .attr('opacity', 0.7)
         .style('cursor', 'pointer')
@@ -2624,7 +2836,7 @@ function updateHourlyDemandChart(data) {
                 .transition()
                 .duration(200)
                 .attr('opacity', 1);
-            
+            // Show tooltip with both demand and success rate
             tooltip
                 .style('opacity', 1)
                 .html(`<strong>Hour: ${d.hour}:00</strong><br/>
@@ -2650,15 +2862,15 @@ function updateHourlyDemandChart(data) {
     // Bar animation
     bars.transition()
         .duration(800)
-        .delay((d, i) => i * 30)
+        .delay((d, i) => i * 30)  // Staggered delay for each bar
         .attr('y', d => yLeft(d.demand))
         .attr('height', d => height - yLeft(d.demand));
     
     // ========== Line chart ==========
     const line = d3.line()
-        .x(d => x(d.hour) + x.bandwidth() / 2)  
+        .x(d => x(d.hour) + x.bandwidth() / 2)  // Center of bar
         .y(d => yRight(d.successRate))
-        .defined(d => d.demand > 0);  
+        .defined(d => d.demand > 0);   // Only draw line where there is data
     
     const path = svg.append('path')
         .datum(completeData)
@@ -2674,13 +2886,13 @@ function updateHourlyDemandChart(data) {
         .attr('stroke-dashoffset', totalLength)
         .transition()
         .duration(1500)
-        .delay(800)
+        .delay(800)  // Start after bars begin
         .ease(d3.easeLinear)
         .attr('stroke-dashoffset', 0);
     
     // ========== Add dots on line ==========
     const dots = svg.selectAll('.dot')
-        .data(completeData.filter(d => d.demand > 0))  
+        .data(completeData.filter(d => d.demand > 0))   // Only for hours with data
         .enter()
         .append('circle')
         .attr('class', 'dot')
@@ -2691,6 +2903,7 @@ function updateHourlyDemandChart(data) {
         .attr('stroke', 'white')
         .attr('stroke-width', 2)
         .style('cursor', 'pointer')
+        // ========== Hover interactions ==========
         .on('mouseover', function(event, d) {
             d3.select(this)
                 .transition()
@@ -2718,10 +2931,10 @@ function updateHourlyDemandChart(data) {
             
             tooltip.style('opacity', 0);
         });
-    
+    // Dots animation
     dots.transition()
         .duration(600)
-        .delay((d, i) => i * 40 + 2300)
+        .delay((d, i) => i * 40 + 2300)  // Appear after line animation
         .attr('r', 4);
     
     // ========== Axis ==========
@@ -2729,7 +2942,7 @@ function updateHourlyDemandChart(data) {
     svg.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(d3.axisBottom(x)
-            .tickFormat(d => d + ':00'))
+            .tickFormat(d => d + ':00'))  // format as "HH:00"
         .selectAll('text')
         .attr('transform', 'rotate(-45)')
         .style('text-anchor', 'end')
@@ -2747,7 +2960,7 @@ function updateHourlyDemandChart(data) {
     svg.append('g')
         .attr('transform', `translate(${width},0)`)
         .call(d3.axisRight(yRight)
-            .tickFormat(d => d + '%'))
+            .tickFormat(d => d + '%')) // add % sign
         .selectAll('text')
         .style('font-size', '11px')
         .style('fill', '#333');
@@ -2771,7 +2984,7 @@ function updateHourlyDemandChart(data) {
         .attr('text-anchor', 'middle')
         .style('font-size', '12px')
         .style('font-weight', 'bold')
-        .style('fill', '#3D7FF5')
+        .style('fill', '#3D7FF5') // Blue color for demand
         .text('Demand');
     
     // Right Y axis label
@@ -2782,14 +2995,14 @@ function updateHourlyDemandChart(data) {
         .attr('text-anchor', 'middle')
         .style('font-size', '12px')
         .style('font-weight', 'bold')
-        .style('fill', '#5BC589')
+        .style('fill', '#5BC589')  // Green color for success rate
         .text('Success Rate (%)');
     
-    // ========== add legenf ==========
+    // ========== add legeng ==========
     const legend = svg.append('g')
         .attr('transform', `translate(${width + 10}, -)`);
     
-    // For demand
+    // For demand (bar)
     legend.append('rect')
         .attr('x', 0)
         .attr('y', 0)
@@ -2805,7 +3018,7 @@ function updateHourlyDemandChart(data) {
         .style('fill', '#333')
         .text('Demand');
     
-    // For success rate
+    // For success rate (line)
     legend.append('line')
         .attr('x1', 0)
         .attr('x2', 15)
