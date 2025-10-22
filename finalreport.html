@@ -183,6 +183,11 @@
             padding: 30px;
             margin-top: 40px;
         }
+        .center {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
 
         @media (max-width: 768px) {
             header h1 {
@@ -430,51 +435,71 @@
 
             <h3>Screen 1 - Overall</h3>
             <p>This temporal overview dashboard provides an "overview first" by immediately answering "What's happening overall?" and "When are patterns changing?"</p>
+            <img src="figures/Overall_page.png" alt="Overall Page Screenshot" style="width:100%; margin: 20px 0; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
             
             <h4>Summary Statistics Cards (5 KPIs)</h4>
             <p>Five key aggregated metrics are displayed as distinct KPI cards showing total bookings, success rates, cancellation rates, and other critical measures. Large numerals with descriptive labels enable at-a-glance scanning, using size to emphasize importance.</p>
-
+            <img src="figures/5KPI.png" alt="Summary Statics Cards Screenshot" class="center" style="width:80%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
+            
             <h4>Bookings by Vehicle Type (Bar Chart)</h4>
             <p>Vertical bar chart using bar length (position along y-axis) to encode ride count, with position along x-axis for vehicle types. Hover interactions reveal exact booking counts (details-on-demand). Answers "Which vehicle types generate most business?" through direct categorical comparison.</p>
-
+            <img src="figures/Booking_vehicle.png" alt="Booking by Vehicle Type Screenshot" class="center" style="width: 60%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
+            
             <h4>Booking Status Distribution (Pie Chart)</h4>
             <p>Proportional breakdown of booking status, with color distinguishing categories. Hover tooltips show exact values and percentages.</p>
-
+            <img src="figures/Booking_Status_Distribution.png" alt="Booking Status Distribution Screenshot" class="center" style="width: 60%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
+            
             <h4>Bookings Over Time (Line Chart)</h4>
             <p>Time series showing ride volume with continuous temporal data. Primary visualization for "When do demand patterns change?" and identifies temporal anomalies, trends, and cyclical patterns.</p>
-
+            <img src="figures/Booking_overtime.png" alt="Booking Over Time Screenshot" class="center" style="width: 80%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
+            
             <h3>Screen 2 - Vehicle Type</h3>
             <p>This page includes a dropdown that allows you to select different metrics based on vehicle type (Total Booking Value, Success Booking Value, Average Distance Travelled, Total Distance Travelled, Average Driver Ratings, and Average Customer Ratings). Users can toggle between metrics dynamically, and details-on-demand are available when hovering over or selecting a bar. This provides a clear way to evaluate performance, usage, and satisfaction across various vehicle types.</p>
-
+            <img src="figures/Vehicle Type.png" alt="Vehicle Type Analysis Screenshot" style="width:100%; margin: 20px 0; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
             <h3>Screen 3 - Revenue</h3>
             <p>This revenue-focused page provides financial insights and geographic analysis to answer "Where is revenue generated?" and "What drives booking values?"</p>
-
+            <img src="figures/Revenue.png" alt="Revenue Page Screenshot" style="width:100%; margin: 20px 0; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
             <h4>Payment Methods Distribution (Donut Chart)</h4>
             <p>Shows the proportional breakdown of payment methods used across all bookings. Central display shows Total Payments (based on time frame), providing immediate context for scale. Payment categories represented include UPI, Cash, Uber Wallet, Credit Card, and Debit Card. Color-coded segments with percentage labels enable quick scanning of payment method popularity. Answers "Which payment methods do customers prefer?" and informs payment processing infrastructure priorities.</p>
+            <img src="figures/Payment_Dis.png" alt="Payment Methods Distribution Screenshot" class="center" style="width: 60%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
 
             <h4>Revenue by Pickup/Drop Location - Top 10 (Heatmap Matrix)</h4>
             <p>Two-dimensional matrix visualization where pickup locations form the Y-axis (rows) and drop locations form the X-axis (columns). Color intensity gradient from light yellow to dark maroon encodes revenue concentration for each origin-destination pair. Displays top 10 pickup locations (Barakhamba Road, Khandsa, Subhash Chowk, Pataudi Chowk, Badarpur, Tughlakabad, AIIMS, Inderlok, Mayur Vihar, Greater Noida) and top 10 drop locations (Nasirdinpur, Sarojini Nagar, Mayur Vihar, Sarai Kale Khan, Lajpat Nagar, Samapur Badli, Chhirag Delhi, Sukhrampur, Lok Kalyan Marg, Ghod Pathan). Rotated axis labels (45° angle on X-axis) ensure readability of location names without overlap.</p>
-
+            <img src="figures/Heatmap.png" alt="Heatmap Visualization" class="center" style="width: 60%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
             <h4>Price per KM Distribution (Histogram)</h4>
             <p>Vertical bar histogram showing the frequency distribution of fare rates (price per kilometer in ₹). The X-axis represents price per kilometer ranging from ₹0 to ₹130+, with narrow bin widths for granular resolution. The Y-axis shows frequency (number of rides) up to 18,000. A red dashed vertical line marks the mean at ₹37.88/km, providing a reference point for typical pricing. Peak frequency occurs in the ₹10-20/km range, with approximately 17,000 rides. The long right tail extends beyond ₹80/km, indicating outlier trips with premium per-kilometer rates (possibly short-distance minimum fares or surge pricing). The distribution's shape suggests most rides fall within an affordable ₹10-40/km range, while premium services or minimum fares create the extended tail.</p>
-
+            <img src="figures/PriceperKm.png" alt="Price per KM Distribution Screenshot" class="center" style="width: 90%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
             <h3>Screen 4 - Booking Status</h3>
             <p>This page focuses on booking status analytics, making it critical for understanding ride completion rates, cancellation patterns, and service reliability.</p>
-
+            <img src="figures/Booking_Status.png" alt="Booking Status Page Screenshot" style="width:100%; margin: 20px 0; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            
             <h4>Overall Ride Distribution (Bar Chart)</h4>
             <p>Quick assessment of booking status (Completed, Cancelled by Driver, No Driver Found, Cancelled by Customer, Incomplete). Top-left position emphasizes this as the primary metric.</p>
+            <img src="figures/Overall_ride_dis.png" alt="Overall Ride Distribution Screenshot" class="center" style="width: 60%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 
             <h4>Driver Cancellation Reasons (Pie Chart)</h4>
             <p>Separates driver versus customer cancellations and acknowledges that these require different operational responses. Examples include customer-related issues, more than permitted people, customer was coughing/sick, and personal & car-related issues. Insights: Driver issues need operations/training solutions.</p>
+            <img src="figures/Driver_reasons.png" alt="Driver Cancellation Reasons Screenshot" class="center" style="width: 60%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 
             <h4>Customer Cancellation Reasons (Pie Chart)</h4>
             <p>Examples include change of plans, wrong address, driver asked to cancel, driver is not moving towards pickup location, and AC is not working. Insights: Customer issues need UX/product improvements.</p>
+            <img src="figures/Customer_reasons.png" alt="Customer Cancellation Reasons Screenshot" class="center" style="width: 60%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 
             <h4>Monthly Success Rate Trend (Line Chart)</h4>
             <p>Reveals consistency/volatility in success rates over time. Connected line shows progression and makes inflection points more obvious.</p>
+            <img src="figures/Monthly_success_rate.png" alt="Monthly Success Rate Trend Screenshot" class="center" style="width: 90%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 
             <h4>Hourly Demand vs. Success Rate (Dual-Axis Chart)</h4>
             <p>X-axis shows 24-hour time periods (0:00 to 23:00), left Y-axis shows demand volume (0-550), and right Y-axis shows success rate percentage (0-100%). Dual-axis enables direct visual comparison between demand and service quality. High demand with low success rate indicates insufficient supply.</p>
+            <img src="figures/hourly_trend.png" alt="Hourly Demand vs. Success Rate Screenshot" class="center" style="width: 90%; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 
             <h2>Data Transformation and Statistical Analysis</h2>
 
@@ -531,8 +556,8 @@
                 <p><strong>Limitation:</strong> We wanted to create an interactive choropleth map showing the spatial distribution of ride density in India, revenue concentration, and service coverage patterns across the NCR region, but we couldn't for a variety of reasons. First, the dataset only provides categorical zone labels without corresponding geographic coordinates (latitude/longitude). With this, there were no geographic boundary files (GeoJSON/TopoJSON) available to map the zone names to geographic polygons. Lastly, creating these geographic maps required external geocoding services and manual coordinate assignment beyond the scope of this project.</p>
                 
                 <p><strong>Workaround:</strong> Instead of a traditional spatial visualization, we implemented a pickup-to-drop location heatmap. It uses a matrix layout where pickup locations form the Y-axis and drop locations form the X-axis. Encodes revenue intensity through color saturation (darker = higher revenue for that route). Shows the top 10 pickup/drop locations by total revenue to maintain visual clarity. Preserves geographic insight by revealing popular origin-destination pairs and high-value corridors.</p>
-            </div>
-
+                
+            </div>    
             <h3>Other Strategic Decisions</h3>
             <ul>
                 <li><strong>Null Value Strategy:</strong> Rather than imputing missing values, we preserved data integrity by filtering null values before statistical calculations, maintaining null indicators in the dataset for transparency. This prevents artificial data generation while accepting reduced sample sizes for certain metrics.</li>
